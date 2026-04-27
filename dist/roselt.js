@@ -1,3 +1,4 @@
+"use strict";
 (() => {
   // src/utils/resolve-url.js
   function resolveUrl(resourcePath, baseUrl = document.baseURI) {
@@ -356,6 +357,7 @@
   var definitions = /* @__PURE__ */ new Map();
   var activeDefinition = null;
   var activeApp = null;
+  var activePageContext = null;
   function withActiveDefinition(callback) {
     if (!activeDefinition) {
       return void 0;
@@ -373,6 +375,25 @@
       throw new Error("Roselt has not been booted yet.");
     }
     return activeApp;
+  }
+  function readCurrentRouteMatch() {
+    return activeApp ? activeApp.currentRoute() : null;
+  }
+  function requireActivePageContext() {
+    if (!activePageContext) {
+      throw new Error("Roselt.Page runtime helpers are only available while a page is mounted.");
+    }
+    return activePageContext;
+  }
+  function readActivePageElement() {
+    return activePageContext?.page ?? activeApp?.outlet ?? null;
+  }
+  function requireActivePageElement() {
+    const pageElement = readActivePageElement();
+    if (!pageElement) {
+      throw new Error("Roselt.Page DOM helpers are only available while a page is mounted.");
+    }
+    return pageElement;
   }
   function ensurePageApi() {
     const roseltNamespace = globalThis.Roselt ?? {};
@@ -428,6 +449,42 @@
             withActiveDefinition((definition) => {
               definition.load = value;
             });
+          },
+          querySelector(selector) {
+            return requireActivePageElement().querySelector(selector);
+          },
+          querySelectorAll(selector) {
+            return requireActivePageElement().querySelectorAll(selector);
+          },
+          get route() {
+            return activePageContext?.route ?? readCurrentRouteMatch()?.route ?? null;
+          },
+          get params() {
+            return activePageContext?.params ?? readCurrentRouteMatch()?.params ?? {};
+          },
+          get notFound() {
+            return activePageContext?.notFound ?? readCurrentRouteMatch()?.notFound ?? null;
+          },
+          get url() {
+            return activePageContext?.url ?? (activeApp ? activeApp.currentUrl() : null);
+          },
+          get query() {
+            return activePageContext?.query ?? (activeApp ? Object.fromEntries(activeApp.currentUrl().searchParams.entries()) : {});
+          },
+          href(target, parameters = {}) {
+            if (activePageContext) {
+              return activePageContext.href(target, parameters);
+            }
+            return requireActiveApp().href(target, parameters);
+          },
+          navigate(target, parameters = {}, navigationOptions = {}) {
+            if (activePageContext) {
+              return activePageContext.navigate(target, parameters, navigationOptions);
+            }
+            return requireActiveApp().navigate(target, parameters, navigationOptions);
+          },
+          cleanup(callback) {
+            return requireActivePageContext().cleanup(callback);
           }
         }
       });
@@ -489,6 +546,14 @@
   function clearActiveRoseltApp(app) {
     if (!app || activeApp === app) {
       activeApp = null;
+    }
+  }
+  function setActivePageContext(context) {
+    activePageContext = context ?? null;
+  }
+  function clearActivePageContext(context) {
+    if (!context || activePageContext === context) {
+      activePageContext = null;
     }
   }
   async function loadPageScript(url) {
@@ -890,22 +955,32 @@
         this.app.outlet,
         (tagName) => this.app.resolveComponent(tagName)
       );
+      setActivePageContext(pageContext);
       const loadFunction = page.module.load;
       let runtimeMeta = {};
-      if (typeof loadFunction === "function") {
-        const { result: mountResult, cleanup: cleanupListeners } = await capturePageEventListeners(
-          () => loadFunction(pageContext)
+      try {
+        if (typeof loadFunction === "function") {
+          const { result: mountResult, cleanup: cleanupListeners } = await capturePageEventListeners(
+            () => loadFunction(pageContext)
+          );
+          cleanupManager.add(cleanupListeners);
+          cleanupManager.add(mountResult?.destroy ?? mountResult?.cleanup ?? mountResult ?? null);
+          runtimeMeta = mountResult?.meta ?? {};
+        }
+        this.pageCleanup = async () => {
+          await cleanupManager.run();
+          clearActivePageContext(pageContext);
+        };
+        const runtimeStylesheets = await Promise.all(
+          normalizeRuntimeStylesheets(runtimeMeta, currentUrl).map((entry) => this.loader.loadStylesheet(entry.href, { optional: entry.optional }))
         );
-        cleanupManager.add(cleanupListeners);
-        cleanupManager.add(mountResult?.destroy ?? mountResult?.cleanup ?? mountResult ?? null);
-        runtimeMeta = mountResult?.meta ?? {};
+        this.activeStyleElements.push(...this.applyStyles(runtimeStylesheets));
+        applyHead(routeMatch.route, page.module, runtimeMeta, currentUrl);
+      } catch (error) {
+        clearActivePageContext(pageContext);
+        await cleanupManager.run();
+        throw error;
       }
-      this.pageCleanup = () => cleanupManager.run();
-      const runtimeStylesheets = await Promise.all(
-        normalizeRuntimeStylesheets(runtimeMeta, currentUrl).map((entry) => this.loader.loadStylesheet(entry.href, { optional: entry.optional }))
-      );
-      this.activeStyleElements.push(...this.applyStyles(runtimeStylesheets));
-      applyHead(routeMatch.route, page.module, runtimeMeta, currentUrl);
     }
     applyStyles(stylesheets, inlineStyles = []) {
       const styleElements = [];
@@ -1047,9 +1122,9 @@
         queryParam = "page",
         basePath,
         components = {},
-        pagesDirectory = "./pages",
-        sectionsDirectory = "./sections",
-        componentsDirectory = "./components",
+        pagesDirectory = "pages",
+        sectionsDirectory = "sections",
+        componentsDirectory = "components",
         defaultPage
       } = options;
       this.routes = routes;
