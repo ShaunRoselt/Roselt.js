@@ -1050,7 +1050,7 @@ function isShorthandSectionReference(value) {
 }
 var SectionLoader = class {
   constructor(options = {}) {
-    const { sectionsDirectory = "./sections" } = options;
+    const { sectionsDirectory = "sections" } = options;
     this.sectionsDirectory = sectionsDirectory;
     this.sectionCache = /* @__PURE__ */ new Map();
   }
