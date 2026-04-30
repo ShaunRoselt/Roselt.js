@@ -1,0 +1,60 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Deployment</p>
+    <h1>Roselt.js is easiest to deploy where one <code>index.html</code> can own the experience.</h1>
+    <p class="doc-page__lead">
+      Query routing is the default recommendation because it avoids server rewrite requirements. That makes GitHub Pages and similar static hosts a natural fit for Roselt.js apps and documentation sites.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Recommended GitHub Pages model</h2>
+    <ul>
+      <li>Keep the app entrypoint as <code>index.html</code>.</li>
+      <li>Use query routing links such as <code>?page=home</code> and <code>?page=docs/getting-started</code>.</li>
+      <li>Publish the built or authored site from the folder GitHub Pages serves.</li>
+      <li>Keep your asset, page, section, and component paths relative to the served app directory.</li>
+    </ul>
+  </section>
+
+  <section class="doc-section">
+    <h2>Preview locally before publishing</h2>
+<pre class="code-block"><code>npm install
+npm run build
+npm run serve</code></pre>
+    <p>Then verify the landing page, representative docs URLs, refresh behavior, and the custom 404 page.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Pathname routing deployment requirements</h2>
+    <p>If you switch to <code>routingMode: "pathname"</code>, your host must rewrite route requests back to the app entrypoint. Without rewrites, direct loads such as <code>/docs/getting-started</code> will return a server 404 before Roselt.js can start.</p>
+    <div class="callout">
+      <strong>Base path note</strong>
+      <p>When the app is served from a subdirectory, set <code>basePath</code> explicitly if <code>document.baseURI</code> does not match the public app root.</p>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>Deployment checklist</h2>
+    <div class="step-grid">
+      <article class="step-card">
+        <h3>Verify the bundle</h3>
+        <p>Refresh <code>dist/</code> before publishing so the public app references the current framework code.</p>
+      </article>
+      <article class="step-card">
+        <h3>Test deep links</h3>
+        <p>Load representative query URLs directly to confirm the host preserves the search string and serves the entry page.</p>
+      </article>
+      <article class="step-card">
+        <h3>Check metadata</h3>
+        <p>Open the rendered head output and confirm titles, descriptions, and canonical links match the public routes you expect users to share.</p>
+      </article>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/metadata-seo"><span>Previous</span>Metadata and SEO</a>
+    <a href="?page=docs/api-reference"><span>Next</span>API reference</a>
+  </nav>
+</article>

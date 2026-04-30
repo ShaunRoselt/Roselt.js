@@ -1,0 +1,53 @@
+<article class="page-shell blog-post">
+  <header class="blog-post__header">
+    <a class="blog-post__back" href="?page=blog">&larr; Back to blog</a>
+    <time class="blog-post__date" datetime="2026-04-16">April 16, 2026</time>
+    <h1>Introducing Roselt.js</h1>
+    <p class="blog-post__lead">
+      A file-based framework for building full web applications with vanilla JavaScript.
+    </p>
+  </header>
+
+  <div class="blog-post__body prose">
+    <p>
+      We're excited to announce <strong>Roselt.js</strong> — a lightweight, file-based framework for building full web applications, product sites, and desktop-ready shells using vanilla JavaScript and real HTML files.
+    </p>
+
+    <h2>Why Roselt.js?</h2>
+    <p>
+      Modern frameworks solve important problems, but they often pull teams away from the platform. Roselt.js takes the opposite approach: stay close to HTML, keep the runtime small, and let the file system drive the route map.
+    </p>
+    <p>
+      There's no build step required, no JSX transform, and no virtual DOM. Pages are real HTML files resolved from a <code>pages/</code> folder. Shared UI like headers and sidebars live in <code>sections/</code> and stay mounted across navigation. Custom elements live in <code>components/</code>.
+    </p>
+
+    <h2>Key ideas</h2>
+    <ul>
+      <li><strong>File-based routing</strong> — Drop HTML files in <code>pages/</code> and the router resolves them automatically.</li>
+      <li><strong>Persistent shell</strong> — Sections stay mounted while pages swap, so headers, sidebars, and footers don't flicker.</li>
+      <li><strong>Zero runtime dependencies</strong> — The published package ships with nothing extra.</li>
+      <li><strong>Flexible delivery</strong> — Works on static hosts out of the box, and can move into packaged shells when platform delivery matters.</li>
+    </ul>
+
+    <h2>Getting started</h2>
+    <p>
+      The fastest way to try Roselt.js is to create an <code>index.html</code> with a page root and a <code>pages/home.html</code> file. Start the router and you have a working routed app.
+    </p>
+
+    <pre><code>&lt;roselt page="home"&gt;&lt;/roselt&gt;
+
+&lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  window.Roselt.start();
+&lt;/script&gt;</code></pre>
+
+    <p>
+      Head over to the <a href="?page=docs/getting-started">getting started guide</a> for a full walkthrough, or explore the <a href="?page=docs/api-reference">API reference</a> for the complete surface area.
+    </p>
+
+    <h2>What's next</h2>
+    <p>
+      This is just the beginning. We'll be sharing more about components, metadata, deployment patterns, and the roadmap for Roselt.js in future posts. Follow along on <a href="https://github.com/ShaunRoselt/Roselt.js" target="_blank" rel="noreferrer">GitHub</a> and check back here for updates.
+    </p>
+  </div>
+</article>

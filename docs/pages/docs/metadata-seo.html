@@ -1,0 +1,58 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Metadata and SEO</p>
+    <h1>Set page titles, descriptions, canonicals, and social text with the page module.</h1>
+    <p class="doc-page__lead">
+      Roselt.js updates the document title, canonical URL, description, Open Graph text, and Twitter text after each page render. The framework keeps the metadata surface small and route-driven.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Metadata you can set today</h2>
+<pre class="code-block"><code>Roselt.Page.Title = "Home";
+Roselt.Page.Description = "Home page";
+Roselt.Page.Canonical = "?page=home";</code></pre>
+    <p>When only <code>title</code> and <code>description</code> are present, Roselt.js automatically uses them as the fallback values for <code>og:title</code>, <code>og:description</code>, <code>twitter:title</code>, and <code>twitter:description</code>.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>How metadata is resolved</h2>
+    <ol>
+      <li>Route-level metadata is applied first when you define explicit routes.</li>
+      <li>The page module metadata from <code>Roselt.Page.*</code> overrides route metadata.</li>
+      <li>Metadata returned from <code>Roselt.Page.Load(...)</code> as part of <code>mountResult.meta</code> wins last.</li>
+    </ol>
+<pre class="code-block"><code>Roselt.Page.Load = () =&gt; {
+  return {
+    meta: {
+      title: "Dashboard",
+      description: "Live dashboard data for the current account."
+    }
+  };
+};</code></pre>
+  </section>
+
+  <section class="doc-section">
+    <h2>Canonical handling</h2>
+    <p>If you do not set <code>Roselt.Page.Canonical</code>, Roselt.js uses the current URL as the canonical. That means query-based docs pages keep their route query parameter in the canonical link by default.</p>
+    <div class="callout">
+      <strong>Static-host fit</strong>
+      <p>For a query-routed GitHub Pages site, that default is usually exactly what you want: each doc page remains directly shareable and canonicalized to the URL users actually load.</p>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>What Roselt.js intentionally does not do</h2>
+    <ul>
+      <li>No server-side rendering layer.</li>
+      <li>No framework-specific sitemap or robots system.</li>
+      <li>No markdown or content pipeline hidden behind the metadata API.</li>
+    </ul>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/components"><span>Previous</span>Components</a>
+    <a href="?page=docs/deployment"><span>Next</span>Deployment</a>
+  </nav>
+</article>

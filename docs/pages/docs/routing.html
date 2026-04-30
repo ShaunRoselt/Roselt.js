@@ -1,0 +1,77 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Routing and navigation</p>
+    <h1>Roselt.js supports query routing by default and pathname routing when you need it.</h1>
+    <p class="doc-page__lead">
+      Query routing is the practical default because it behaves well on static hosts. Pathname routing is available when your deployment can rewrite arbitrary URLs back to the main entry document.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Default query routing</h2>
+    <p>With the default configuration, Roselt.js reads the <code>page</code> search parameter.</p>
+<pre class="code-block"><code>?page=home
+?page=about
+?page=docs/getting-started</code></pre>
+    <p>If the parameter is missing, Roselt.js uses the navigation page root's <code>page</code> attribute or <code>home</code>. The default start path requires a routed page root marked with <code>navigate</code>.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Switch to pathname routing</h2>
+    <p>Set <code>routingMode: "pathname"</code> when you want clean paths and your host can serve the entry page for every route request.</p>
+<pre class="code-block"><code>window.Roselt.start({
+  routingMode: "pathname"
+});</code></pre>
+    <p>In pathname mode, a page named <code>docs/getting-started</code> resolves to <code>/docs/getting-started</code>.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Use explicit routes when filenames are not enough</h2>
+    <p>Automatic routes are the default. Pass a <code>routes</code> array only when you need named routes, custom file locations, route metadata, or pathname parameters.</p>
+<pre class="code-block"><code>window.Roselt.start({
+  routingMode: "pathname",
+  routes: [
+    {
+      name: "blog-post",
+      path: "/blog/:slug",
+      html: "pages/blog/post.html",
+      module: "pages/blog/post.js"
+    }
+  ]
+});</code></pre>
+    <p>When a route path contains parameters, <code>Roselt.Page.params</code> exposes them inside the mounted page module.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Navigation helpers</h2>
+    <div class="api-grid">
+      <article class="api-card">
+        <h3>Real links</h3>
+        <p>Any standard anchor with an internal URL keeps working. Roselt.js intercepts same-origin navigation and renders the next page in place.</p>
+      </article>
+      <article class="api-card">
+        <h3><code>href</code> on other elements</h3>
+        <p>Buttons or other elements can navigate too when they carry an <code>href</code> attribute, as long as they are not downloads or external targets.</p>
+      </article>
+      <article class="api-card">
+        <h3><code>navigate()</code> and <code>href()</code></h3>
+        <p>The Roselt.js runtime exposes helpers for programmatic navigation and URL construction globally and on <code>Roselt.Page</code> while a route is mounted. Prefer <code>Roselt.Page.href()</code> when you need a generated URL in page code.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>404 behavior</h2>
+    <p>If Roselt.js cannot load the requested page HTML, it falls back to a built-in not-found screen or to your custom <code>pages/404.html</code> page when that file exists.</p>
+    <div class="callout">
+      <strong>Deep link reality</strong>
+      <p>Query routing avoids the classic static-host problem where <code>/docs/getting-started</code> 404s on refresh. If you need GitHub Pages compatibility, query routing is the safer choice.</p>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/project-structure"><span>Previous</span>Project structure</a>
+    <a href="?page=docs/pages"><span>Next</span>Pages</a>
+  </nav>
+</article>

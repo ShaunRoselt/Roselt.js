@@ -1,0 +1,246 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">API reference</p>
+    <h1>The public Roselt.js surface is deliberately compact.</h1>
+    <p class="doc-page__lead">
+      Most apps only need <code>Roselt.start()</code>, page modules, and the default folder layout. The table below covers the actual exported surface available in this repository today.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2><code>start(options)</code></h2>
+    <p>The browser-global convenience entry point. In a script-tag setup, <code>window.Roselt.start()</code> forwards to <code>Roselt.start(options)</code> and returns the started app instance.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Browser global helpers</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Helper</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Roselt.app</code></td>
+          <td>Returns the active app instance after start.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.navigate(target, parameters?, navigationOptions?)</code></td>
+          <td>Runs programmatic navigation through the active app.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.href(target, parameters?)</code></td>
+          <td>Builds an internal route URL using the active app's routing mode.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.currentUrl()</code> and <code>Roselt.currentRoute()</code></td>
+          <td>Read the active browser URL and resolved route match.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2><code>Roselt.start(options)</code></h2>
+    <p>Creates a <code>Roselt</code> instance, starts section resolution, starts the router, and returns the app instance.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Default</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>pageRoot</code></td>
+          <td><code>"roselt[page][navigate]"</code></td>
+          <td>Selector or element used as the routed page root. The default start path requires a <code>roselt[page]</code> element marked with <code>navigate</code>.</td>
+        </tr>
+        <tr>
+          <td><code>routes</code></td>
+          <td><code>[]</code></td>
+          <td>Optional explicit route list. When omitted, Roselt.js resolves page IDs directly from the requested URL and the configured <code>pagesDirectory</code>.</td>
+        </tr>
+        <tr>
+          <td><code>routingMode</code></td>
+          <td><code>"query"</code></td>
+          <td>Controls whether Roselt.js reads a query parameter or the pathname for route resolution.</td>
+        </tr>
+        <tr>
+          <td><code>queryParam</code></td>
+          <td><code>"page"</code></td>
+          <td>The search parameter used when query routing is active.</td>
+        </tr>
+        <tr>
+          <td><code>basePath</code></td>
+          <td>derived from <code>document.baseURI</code></td>
+          <td>Base path used by pathname routing and href generation.</td>
+        </tr>
+        <tr>
+          <td><code>components</code></td>
+          <td><code>{}</code></td>
+          <td>Initial component definitions to register before the app starts.</td>
+        </tr>
+        <tr>
+          <td><code>pagesDirectory</code></td>
+          <td><code>"pages"</code></td>
+          <td>Directory Roselt.js uses for automatic page resolution.</td>
+        </tr>
+        <tr>
+          <td><code>sectionsDirectory</code></td>
+          <td><code>"sections"</code></td>
+          <td>Directory Roselt.js uses when resolving shorthand section references.</td>
+        </tr>
+        <tr>
+          <td><code>componentsDirectory</code></td>
+          <td><code>"components"</code></td>
+          <td>Directory used when Roselt.js auto-loads custom element modules by tag name.</td>
+        </tr>
+        <tr>
+          <td><code>defaultPage</code></td>
+          <td>derived from the page root or <code>home</code></td>
+          <td>Fallback page when the URL does not explicitly request one.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>App instance methods</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Method</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>start()</code></td>
+          <td>Starts section resolution, component discovery, router startup, and the initial page render.</td>
+        </tr>
+        <tr>
+          <td><code>stop()</code></td>
+          <td>Stops router listeners and clears the active global app reference.</td>
+        </tr>
+        <tr>
+          <td><code>resolve(url)</code></td>
+          <td>Resolves a URL into a route match using the current app options.</td>
+        </tr>
+        <tr>
+          <td><code>renderUrl(url, routeMatch?)</code></td>
+          <td>Renders a URL directly through the current render engine.</td>
+        </tr>
+        <tr>
+          <td><code>navigate(target, parameters?, navigationOptions?)</code></td>
+          <td>Performs programmatic navigation using the Navigation API.</td>
+        </tr>
+        <tr>
+          <td><code>href(target, parameters?, sourceUrl?)</code></td>
+          <td>Builds an internal route URL in the app's configured routing mode.</td>
+        </tr>
+        <tr>
+          <td><code>currentUrl()</code></td>
+          <td>Returns the current browser URL as a <code>URL</code> object.</td>
+        </tr>
+        <tr>
+          <td><code>currentRoute()</code></td>
+          <td>Returns the resolved route match for the current URL.</td>
+        </tr>
+        <tr>
+          <td><code>resolveComponent(tagName)</code></td>
+          <td>Builds the component module path for a custom element tag.</td>
+        </tr>
+        <tr>
+          <td><code>rootHref()</code></td>
+          <td>Returns the root href for the configured base path.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>Page authoring API</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Roselt.Page.Title</code></td>
+          <td>Sets the document title and the fallback Open Graph/Twitter title text.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.Description</code></td>
+          <td>Sets the description and the fallback social description text.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.Canonical</code></td>
+          <td>Overrides the canonical URL link for the route.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.Stylesheets</code></td>
+          <td>Declares additional stylesheets to load for the page module.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.Components</code></td>
+          <td>Registers page-local component definitions for the rendered route.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.Load</code></td>
+          <td>Mount hook invoked after the page HTML renders and components are resolved. It receives no required arguments.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.querySelector()</code> and <code>Roselt.Page.querySelectorAll()</code></td>
+          <td>DOM query helpers scoped to the active page root for the currently mounted route.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.route</code>, <code>Roselt.Page.params</code>, and <code>Roselt.Page.notFound</code></td>
+          <td>Runtime route state for the mounted page, including pathname params and custom 404 details.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.url</code> and <code>Roselt.Page.query</code></td>
+          <td>Runtime URL state for the mounted page.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.href()</code>, <code>Roselt.Page.navigate()</code>, and <code>Roselt.Page.cleanup()</code></td>
+          <td>Runtime helpers for link building, navigation, and page unmount cleanup registration.</td>
+        </tr>
+        <tr>
+          <td><code>Load</code> return value</td>
+          <td>Return a cleanup function, an object with <code>cleanup</code> or <code>destroy</code>, runtime <code>meta</code>, or <code>null</code> when no teardown is needed.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>Named exports from the package entry</h2>
+    <div class="api-grid">
+      <article class="api-card">
+        <h3><code>Roselt</code> and default export</h3>
+        <p>The main class used by <code>Roselt.start()</code> and lower-level manual app construction.</p>
+      </article>
+      <article class="api-card">
+        <h3><code>start(options)</code></h3>
+        <p>The direct convenience export that gives the browser global its <code>window.Roselt.start()</code> shape.</p>
+      </article>
+      <article class="api-card">
+        <h3>Component registry exports</h3>
+        <p><code>ComponentRegistry</code>, <code>defineComponent</code>, <code>globalComponentRegistry</code>, and <code>lazyComponent</code> are available for custom element registration.</p>
+      </article>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/deployment"><span>Previous</span>Deployment</a>
+    <a href="?page=docs/faq"><span>Next</span>FAQ</a>
+  </nav>
+</article>

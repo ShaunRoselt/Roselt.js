@@ -1,0 +1,101 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Pages</p>
+    <h1>Each page can ship markup, metadata, behavior, and same-name CSS.</h1>
+    <p class="doc-page__lead">
+      Roselt.js pages are intentionally plain: an HTML file for markup, an optional JavaScript file for metadata and lifecycle behavior, and an optional CSS file loaded automatically from the same directory.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>HTML first</h2>
+    <p>The HTML file is the route's primary source of content. Inline style tags are extracted and applied before the page swaps in, which helps avoid flicker during navigation.</p>
+<pre class="code-block"><code>&lt;section data-page-home&gt;
+  &lt;h1&gt;Home&lt;/h1&gt;
+  &lt;p&gt;This route came from pages/home.html.&lt;/p&gt;
+&lt;/section&gt;</code></pre>
+  </section>
+
+  <section class="doc-section">
+    <h2>Page module contract</h2>
+    <p>Page modules run when their matching route module is loaded. Set metadata at the top level, then use <code>Roselt.Page.Load</code> only when the rendered HTML needs behavior.</p>
+<pre class="code-block"><code>Roselt.Page.Title = "Home";
+Roselt.Page.Description = "Home page";
+
+Roselt.Page.Load = () =&gt; {
+  const button = Roselt.Page.querySelector("[data-next-page]");
+
+  if (!(button instanceof HTMLButtonElement)) {
+    return null;
+  }
+
+  button.setAttribute("href", Roselt.Page.href("about"));
+
+  const handleClick = () =&gt; Roselt.Page.navigate("about");
+
+  button.addEventListener("click", handleClick);
+
+  Roselt.Page.cleanup(() =&gt; {
+    button.dataset.ready = "false";
+  });
+};</code></pre>
+    <p><code>Roselt.Page.Load</code> does not need a context argument. The active page state and helpers are available directly from <code>Roselt.Page</code> while the route is mounted.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>What Roselt.Page exposes at runtime</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Property</th>
+          <th>Meaning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>Roselt.Page.querySelector()</code> and <code>Roselt.Page.querySelectorAll()</code></td>
+          <td>DOM query helpers scoped to the routed page root after the new page HTML has been inserted.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.route</code> and <code>Roselt.Page.params</code></td>
+          <td>The matched route object and any pathname parameters for explicit routes.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.url</code> and <code>Roselt.Page.query</code></td>
+          <td>The current URL object and a plain-object view of the search params.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.href()</code> and <code>Roselt.Page.navigate()</code></td>
+          <td>Helpers for building internal URLs and performing programmatic navigation.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.cleanup()</code></td>
+          <td>Register additional cleanup callbacks to run when the page unmounts.</td>
+        </tr>
+        <tr>
+          <td><code>return cleanup</code> or <code>return { cleanup, destroy, meta }</code></td>
+          <td>Return page teardown work, runtime metadata, or both from <code>Roselt.Page.Load</code>.</td>
+        </tr>
+        <tr>
+          <td><code>Roselt.Page.notFound</code></td>
+          <td>Provides the failed URL details when Roselt.js is rendering a custom 404 page.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>Automatic cleanup</h2>
+    <p>Event listeners added during <code>Roselt.Page.Load(...)</code> are automatically tracked through an abort signal wrapper. You can still return a cleanup function or register explicit cleanup callbacks for libraries, observers, timers, or anything outside normal event binding.</p>
+    <div class="callout">
+      <strong>Practical rule</strong>
+      <p>If your page module only sets metadata, the file can be just two lines. Add a <code>Load</code> handler only when you need DOM behavior.</p>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/routing"><span>Previous</span>Routing and navigation</a>
+    <a href="?page=docs/sections"><span>Next</span>Sections</a>
+  </nav>
+</article>

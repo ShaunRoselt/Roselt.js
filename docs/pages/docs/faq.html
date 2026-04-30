@@ -1,0 +1,45 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">FAQ</p>
+    <h1>Common decisions and tradeoffs.</h1>
+    <p class="doc-page__lead">
+      Roselt.js is small enough that most questions come down to hosting assumptions, directory layout, and how much framework behavior you actually want layered over the browser platform.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Questions developers usually ask first</h2>
+    <div class="faq-list">
+      <div class="callout">
+        <strong>Does Roselt.js require a build step?</strong>
+        <p>No. The framework can start directly from the prebuilt global bundle. The build scripts in this repository exist to produce the published <code>dist/</code> outputs.</p>
+      </div>
+      <div class="callout">
+        <strong>What does the CDN URL look like now?</strong>
+        <p>Use <code>https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js</code> for the browser global and call <code>window.Roselt.start()</code>. The minified browser-global build is <code>https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.min.js</code>.</p>
+      </div>
+      <div class="callout">
+        <strong>Why is query routing the default?</strong>
+        <p>Because it works on static hosts without rewrites. That makes Roselt.js a practical choice for GitHub Pages-backed documentation or product sites.</p>
+      </div>
+      <div class="callout">
+        <strong>Can I skip the JavaScript file for a page?</strong>
+        <p>Yes. If a route only needs markup, omit the <code>.js</code> file entirely. Roselt.js treats missing page modules as optional.</p>
+      </div>
+      <div class="callout">
+        <strong>Do I have to use custom elements?</strong>
+        <p>No. Components are optional. Plain HTML pages and reusable sections are enough for many Roselt.js sites.</p>
+      </div>
+      <div class="callout">
+        <strong>What browser target does Roselt.js assume?</strong>
+        <p>Latest browsers with Navigation API support. The repository builds ES2022 output and treats the browser Navigation API as the routing foundation.</p>
+      </div>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/api-reference"><span>Previous</span>API reference</a>
+    <a href="?page=home"><span>Back to</span>Home</a>
+  </nav>
+</article>

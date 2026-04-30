@@ -1,54 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Roselt.js - Coming Soon</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Roselt.js</title>
+		<meta
+			name="description"
+			content="Roselt.js is a file-based vanilla JavaScript app framework for full web applications, product sites, and desktop-ready shells."
+		>
+		<link
+			rel="icon"
+			href="assets/roselt-logo.svg"
+		>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/styles/github-dark.min.css">
+		<!-- <link rel="stylesheet" href="index.css"> -->
+		<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.11.1/build/highlight.min.js"></script>
+	</head>
+	<body>
+		<script>
+			// Apply saved theme immediately to prevent flash
+			(function() {
+				var t = localStorage.getItem('roselt-theme');
+				if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+				document.documentElement.setAttribute('data-theme', t);
+			})();
+		</script>
 
-    body {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: #0f172a;
-      color: #e5e7eb;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
+		<div class="site-shell">
+			<roselt section="site-header"></roselt>
 
-    .wrapper {
-      text-align: center;
-      padding: 2rem;
-    }
+			<div class="site-main" id="main-content">
+				<div class="site-page-column">
+					<roselt page="home" navigate></roselt>
+				</div>
+			</div>
 
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 0.75rem;
-    }
+			<roselt section="site-footer"></roselt>
+		</div>
 
-    p {
-      font-size: 1rem;
-      color: #9ca3af;
-    }
-
-    .emoji {
-      font-size: 3rem;
-      margin-top: 2rem;
-      opacity: 0.8;
-    }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <h1>Some cool shit coming soon.</h1>
-    <p>Stay tuned!</p>
-    <div class="emoji">🖕</div>
-  </div>
-</body>
+		<!-- <script src="index.js"></script> -->
+		 
+		<!-- <script src="../dist/roselt.js"></script> -->
+		<script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@latest/dist/roselt.js"></script>
+		<script>
+			window.Roselt.start().then(function(app) {
+				window.initializeSiteChrome?.(app);
+			});
+		</script>
+	</body>
 </html>

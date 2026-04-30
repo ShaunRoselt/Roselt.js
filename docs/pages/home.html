@@ -1,0 +1,244 @@
+<article class="page-shell home-page">
+  <section class="home-hero">
+    <img class="home-hero__mark" src="assets/roselt-logo.svg" alt="Roselt.js logo">
+    <h1>Roselt.js</h1>
+    <p class="home-hero__lede">
+      The framework for web apps and packaged UI shells
+    </p>
+
+    <div class="button-row">
+      <a class="button" href="?page=docs/getting-started">Learn Roselt.js</a>
+      <a class="button-secondary" href="?page=docs/api-reference">API Reference</a>
+    </div>
+  </section>
+
+  <section class="home-showcase">
+    <div class="home-showcase__copy">
+      <p class="eyebrow">Pages from files</p>
+      <h2>Route real pages straight from your folder tree.</h2>
+      <p>
+        Roselt.js resolves pages, scripts, styles, and metadata from matching files so the structure of the app stays readable as the project grows.
+      </p>
+      <p>
+        You can start with one entry page, add nested guides or app views, and keep the route map obvious without maintaining a separate route registry.
+      </p>
+    </div>
+
+    <div class="home-showcase__demo">
+      <section class="panel">
+        <div class="panel__header">
+          <span class="panel__label">Project structure</span>
+          <span class="panel__meta">No route list required</span>
+        </div>
+<pre class="file-tree"><code>index.html
+pages/
+  home.html
+  home.js
+sections/
+  header.html
+  sidebar.html
+  footer.html
+components/
+  ui-button.js</code></pre>
+      </section>
+    </div>
+  </section>
+
+  <section class="home-showcase home-showcase--reverse">
+    <div class="home-showcase__copy">
+      <p class="eyebrow">Persistent shell</p>
+      <h2>Keep the frame mounted while routed content swaps cleanly.</h2>
+      <p>
+        Shared sections live in the shell, so the header, sidebar, and footer remain stable while navigation updates only the routed page content.
+      </p>
+      <p>
+        That makes Roselt.js a good fit for full product applications, internal tools, documentation portals, and teams that want direct HTML authoring without giving up app structure.
+      </p>
+    </div>
+
+    <div class="home-showcase__demo">
+      <section class="panel">
+        <div class="panel__header">
+          <span class="panel__label">Bootstrap</span>
+          <span class="panel__meta">index.html</span>
+        </div>
+<pre><code>&lt;roselt section="header"&gt;&lt;/roselt&gt;
+&lt;roselt section="sidebar"&gt;&lt;/roselt&gt;
+&lt;roselt page="home"&gt;&lt;/roselt&gt;
+&lt;roselt section="footer"&gt;&lt;/roselt&gt;
+
+&lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  window.Roselt.start();
+&lt;/script&gt;</code></pre>
+      </section>
+    </div>
+  </section>
+
+  <section class="home-showcase">
+    <div class="home-showcase__copy">
+      <p class="eyebrow">Flexible delivery</p>
+      <h2>Deploy where static delivery fits, and package where installs matter.</h2>
+      <p>
+        The default query-based router works cleanly on static hosts, and pathname routing is available when your host can rewrite every request back to the entry page.
+      </p>
+      <p>
+        Roselt.js stays close to the platform: HTML files, module scripts, custom elements, and metadata controls that are easy to inspect, reason about, and reuse across serious application surfaces.
+      </p>
+    </div>
+
+    <div class="home-showcase__demo">
+      <div class="home-signal-grid">
+        <article class="home-signal-card">
+          <strong>0</strong>
+          <span>runtime dependencies in the published package</span>
+        </article>
+        <article class="home-signal-card">
+          <strong>1</strong>
+          <span>root entry page required to start a routed app</span>
+        </article>
+        <article class="home-signal-card">
+          <strong>3</strong>
+          <span>core directories to remember: pages, sections, and components</span>
+        </article>
+        <article class="home-signal-card">
+          <strong>SPA</strong>
+          <span>navigation that still fits naturally on static infrastructure</span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-platform">
+    <div class="home-platform__intro">
+      <p class="eyebrow">Choose the right shell</p>
+      <h2>Use the best from every platform</h2>
+      <p>
+        Roselt.js is strongest when it keeps the web experience first-class and then moves into packaged shells only when the product needs platform-specific delivery.
+      </p>
+    </div>
+
+    <div class="home-platform__visuals">
+      <article class="platform-surface platform-surface--web">
+        <div class="platform-surface__frame">
+          <div class="platform-surface__window">
+            <div class="platform-surface__bar">
+              <span class="platform-surface__address-pill">
+                <span class="platform-surface__lock" aria-hidden="true"></span>
+                <span class="platform-surface__address">example.com</span>
+              </span>
+            </div>
+
+            <div class="platform-surface__content">
+              <h3>Stay true to the web</h3>
+              <p>
+                Roselt.js keeps routed interfaces close to the platform so browser apps stay fast, direct, and inspectable. You keep real HTML, linkable routes, persistent shell UI, and rendering behavior that still feels native to the browser.
+              </p>
+            </div>
+          </div>
+
+          <div class="platform-surface__tray" aria-label="Supported browsers">
+            <span class="platform-badge platform-badge--browser" aria-label="Edge">
+              <img class="platform-badge__icon platform-badge__icon--edge" src="assets/platform-icons/edge.svg" alt="" aria-hidden="true">
+            </span>
+            <span class="platform-badge platform-badge--browser" aria-label="Chrome">
+              <img class="platform-badge__icon platform-badge__icon--chrome" src="assets/platform-icons/chrome.svg" alt="" aria-hidden="true">
+            </span>
+            <span class="platform-badge platform-badge--browser" aria-label="Firefox">
+              <img class="platform-badge__icon platform-badge__icon--firefox" src="assets/platform-icons/firefox.svg" alt="" aria-hidden="true">
+            </span>
+            <span class="platform-badge platform-badge--browser" aria-label="Safari">
+              <img class="platform-badge__icon platform-badge__icon--safari" src="assets/platform-icons/safari.svg" alt="" aria-hidden="true">
+            </span>
+          </div>
+        </div>
+      </article>
+
+      <article class="platform-surface platform-surface--desktop">
+        <div class="platform-surface__frame">
+          <div class="platform-surface__window">
+            <div class="platform-surface__bar">
+              <span class="platform-surface__time" data-current-time>10:31</span>
+              <div class="platform-surface__signal" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M17.71 7.71 12 2h-1v7.59L8.41 7 7 8.41 10.59 12 7 15.59 8.41 17 11 14.41V22h1l5.71-5.71L13.41 12ZM13 4.41l2.29 2.3L13 9ZM15.29 16.29 13 18.59V15Z" fill="currentColor"/></svg>
+                <svg viewBox="0 0 24 24"><path d="M3 10.5a16 16 0 0 1 18 0M6 14a11 11 0 0 1 12 0M9.5 17.5a6 6 0 0 1 5 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <svg viewBox="0 0 24 24" data-battery-icon><rect x="4.5" y="9.5" width="0" height="5" rx="1.2" fill="currentColor" data-battery-fill/><rect x="2.5" y="7.5" width="18" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="21" y="10" width="1.5" height="4" rx="0.7" fill="currentColor"/></svg>
+              </div>
+            </div>
+
+            <div class="platform-surface__content">
+              <h3>Package for platforms</h3>
+              <p>
+                Roselt.js can start on the web and move into packaged shells where the product needs a platform-specific distribution story. Keep the routed UI structure intact while choosing the wrapper that fits Windows, Apple, Android, or Linux delivery.
+              </p>
+            </div>
+          </div>
+
+          <div class="platform-surface__tray" aria-label="Packaging targets">
+            <span class="platform-badge platform-badge--os" aria-label="Windows">
+              <span class="platform-badge__tile">
+                <img class="platform-badge__icon platform-badge__icon--windows" src="assets/platform-icons/windows.svg" alt="" aria-hidden="true">
+              </span>
+            </span>
+            <span class="platform-badge platform-badge--os" aria-label="Apple">
+              <span class="platform-badge__tile">
+                <img class="platform-badge__icon platform-badge__icon--apple" src="assets/platform-icons/apple.svg" alt="" aria-hidden="true">
+              </span>
+            </span>
+            <span class="platform-badge platform-badge--os" aria-label="Android">
+              <span class="platform-badge__tile">
+                <img class="platform-badge__icon platform-badge__icon--android" src="assets/platform-icons/android.svg" alt="" aria-hidden="true">
+              </span>
+            </span>
+            <span class="platform-badge platform-badge--os" aria-label="Linux">
+              <span class="platform-badge__tile">
+                <img class="platform-badge__icon platform-badge__icon--linux" src="assets/platform-icons/linux.svg" alt="" aria-hidden="true">
+              </span>
+            </span>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section-stack home-docs-section">
+    <div class="section-header">
+      <h2>Dive into the docs</h2>
+    </div>
+
+    <div class="doc-card-grid">
+      <article class="doc-card">
+        <h3>Get started quickly</h3>
+        <p>Set up the minimal file structure, start the app, and see how Roselt.js resolves the first routed page.</p>
+        <div class="button-row">
+          <a class="button-secondary" href="?page=docs/getting-started">Open getting started</a>
+        </div>
+      </article>
+      <article class="doc-card">
+        <h3>Learn the core primitives</h3>
+        <p>Move from routing into page lifecycle, sections, components, metadata, and the page authoring surface.</p>
+        <div class="button-row">
+          <a class="button-secondary" href="?page=docs/pages">Read the page guide</a>
+        </div>
+      </article>
+      <article class="doc-card">
+        <h3>Reference the API precisely</h3>
+        <p>Review constructor options, instance methods, and exported helpers in one focused reference.</p>
+        <div class="button-row">
+          <a class="button-secondary" href="?page=docs/api-reference">Open the reference</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="section-header">
+      <h2>Start building with Roselt.js</h2>
+    </div>
+
+    <div class="button-row">
+      <a class="button" href="?page=docs/installation">Install Roselt.js</a>
+      <a class="button-secondary" href="?page=docs/deployment">Plan deployment</a>
+    </div>
+  </section>
+</article>
