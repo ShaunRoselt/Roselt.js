@@ -505,7 +505,7 @@ ${source}
   }
   function requireActiveApp() {
     if (!activeApp) {
-      throw new Error("Roselt has not been booted yet.");
+      throw new Error("Roselt has not been started yet.");
     }
     return activeApp;
   }
@@ -1478,7 +1478,7 @@ ${source}
     rootHref() {
       return joinUrlPath(this.options.basePath, "/");
     }
-    static async boot(options = {}) {
+    static async start(options = {}) {
       const app = new _Roselt(options);
       await app.start();
       return app;
@@ -1487,14 +1487,14 @@ ${source}
   var Roselt_default = Roselt;
 
   // src/index.js
-  async function boot(options) {
-    return Roselt_default.boot(options);
+  async function start(options) {
+    return Roselt_default.start(options);
   }
 
   // src/browser-global.js
   Object.assign(globalThis.Roselt ?? {}, {
     Roselt: Roselt_default,
-    boot,
+    start,
     ComponentRegistry,
     defineComponent,
     globalComponentRegistry,
