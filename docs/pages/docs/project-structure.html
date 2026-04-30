@@ -1,0 +1,76 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Project structure</p>
+    <h1>Roselt.js reads your directory layout as application structure.</h1>
+    <p class="doc-page__lead">
+      The framework is intentionally opinionated here. Instead of maintaining a separate route registry for common cases, you usually let Roselt.js resolve requested pages, sections, and components from three default directories.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Default layout</h2>
+<pre class="code-block"><code>index.html
+pages/
+  home.html
+  home.js
+  docs/getting-started.html
+sections/
+  site-header.html
+  site-header.js
+  site-header.css
+  site-footer.html
+components/
+  ui-button.js</code></pre>
+  </section>
+
+  <section class="doc-section">
+    <h2>Directory roles</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Directory</th>
+          <th>What belongs there</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>pages/</code></td>
+          <td>Routeable HTML files, optional page modules, and optional same-name CSS files.</td>
+        </tr>
+        <tr>
+          <td><code>sections/</code></td>
+          <td>Portable HTML fragments that can be resolved anywhere with <code>roselt section="..."</code>, with optional same-name CSS and JS sidecars.</td>
+        </tr>
+        <tr>
+          <td><code>components/</code></td>
+          <td>Custom element modules loaded lazily when their tag names appear in the rendered DOM.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>Nested pages are just nested folders</h2>
+    <p>If the URL requests <code>?page=blog/post</code>, Roselt.js looks for <code>pages/blog/post.html</code> and <code>pages/blog/post.js</code>.</p>
+    <div class="callout">
+      <strong>No extra route object required</strong>
+      <p>File-based page resolution is the default. You only need explicit routes when you want custom paths, pathname parameters, extra route metadata, or custom file locations.</p>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>Custom directories remain available</h2>
+    <p><code>Roselt.start()</code> accepts <code>pagesDirectory</code>, <code>sectionsDirectory</code>, and <code>componentsDirectory</code> when you want a different shape. The defaults are the fast path, not a hard limitation.</p>
+<pre class="code-block"><code>window.Roselt.start({
+  pagesDirectory: "app/pages",
+  sectionsDirectory: "app/sections",
+  componentsDirectory: "app/components"
+});</code></pre>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/installation"><span>Previous</span>Installation</a>
+    <a href="?page=docs/routing"><span>Next</span>Routing and navigation</a>
+  </nav>
+</article>

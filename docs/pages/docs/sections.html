@@ -1,0 +1,85 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Sections</p>
+    <h1>Sections are reusable HTML fragments that can stay mounted across route changes.</h1>
+    <p class="doc-page__lead">
+      Use sections for shared shell fragments such as headers, footers, sidebars, legal notices, or cross-page utility UI. Roselt.js resolves them recursively and caches them after startup.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Load a section with shorthand</h2>
+<pre class="code-block"><code>&lt;roselt section="site-header"&gt;&lt;/roselt&gt;</code></pre>
+    <p>Roselt.js resolves shorthand names like <code>site-header</code> to <code>sections/site-header.html</code> by default.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Optional section sidecars</h2>
+    <p>Sections can now ship same-name sidecar files, similar to pages. When <code>sections/site-header.html</code> is used, Roselt.js also tries <code>sections/site-header.css</code> and <code>sections/site-header.js</code> automatically.</p>
+<pre class="code-block"><code>sections/
+  site-header.html
+  site-header.css
+  site-header.js</code></pre>
+    <p>Use the CSS file for shared section styling and the JS file for section-level browser behavior such as search overlays, menus, or shell controls.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Resolve sections recursively</h2>
+    <p>Section HTML can include other sections. Roselt.js processes the fragment as a template and resolves nested <code>roselt section</code> elements before inserting the final markup.</p>
+<pre class="code-block"><code>&lt;!-- sections/site-header.html --&gt;
+&lt;header&gt;
+  &lt;roselt section="brand-lockup"&gt;&lt;/roselt&gt;
+  &lt;nav&gt;...&lt;/nav&gt;
+&lt;/header&gt;</code></pre>
+  </section>
+
+  <section class="doc-section">
+    <h2>Where sections work best</h2>
+    <div class="doc-card-grid">
+      <article class="doc-card">
+        <h3>Persistent shell UI</h3>
+        <p>Wrap your page root with shared header and footer sections in <code>index.html</code> so they resolve once and remain mounted during navigation.</p>
+      </article>
+      <article class="doc-card">
+        <h3>Portable content blocks</h3>
+        <p>Use sections as reusable content fragments for banners, shared calls to action, or repeated editorial modules.</p>
+      </article>
+      <article class="doc-card">
+        <h3>App-level composition</h3>
+        <p>Because sections resolve before routed content renders, they are a good place for shared layout scaffolding that should not reinitialize on each route.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>Path resolution rules</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>How Roselt.js resolves it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>site-header</code></td>
+          <td>Resolved relative to the configured <code>sectionsDirectory</code> as <code>sections/site-header.html</code>, with optional <code>sections/site-header.css</code> and <code>sections/site-header.js</code> sidecars loaded automatically.</td>
+        </tr>
+        <tr>
+          <td><code>shared/promo.html</code></td>
+          <td>Treated as an explicit relative path and resolved against the including file.</td>
+        </tr>
+        <tr>
+          <td><code>https://...</code></td>
+          <td>Treated as a full URL reference.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/pages"><span>Previous</span>Pages</a>
+    <a href="?page=docs/components"><span>Next</span>Components</a>
+  </nav>
+</article>

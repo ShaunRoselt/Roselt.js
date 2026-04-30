@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Roselt.js logo</title>
+  <desc id="desc">Rounded gray-blue Roselt.js mark with a stylized R.</desc>
+  <defs>
+    <linearGradient id="roselt-gradient" x1="20" y1="14" x2="108" y2="114" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#b7cada"/>
+      <stop offset="0.55" stop-color="#6f89a6"/>
+      <stop offset="1" stop-color="#4a5f78"/>
+    </linearGradient>
+    <linearGradient id="roselt-glow" x1="24" y1="20" x2="84" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="8" width="112" height="112" rx="34" fill="url(#roselt-gradient)"/>
+  <rect x="15" y="15" width="98" height="98" rx="28" fill="url(#roselt-glow)" opacity="0.7"/>
+  <path d="M34 24h30.5c22.5 0 36.5 12.2 36.5 31.8 0 13.9-7.1 23.8-19.8 28.1L98 104H75.7L61.2 85.8H50.6V104H34V24Zm16.6 14.7v32.6h13.1c12.4 0 20.2-5.3 20.2-16.1 0-10.7-7.8-16.5-20.2-16.5H50.6Z" fill="#F8FDFF"/>
+  <path d="M23 43.7C31.6 31.2 46.8 23 67.6 23c7.2 0 14.1.9 20.7 2.8" fill="none" stroke="#d9e4ee" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="26.5" cy="47.1" r="5.5" fill="#d9e4ee" opacity="0.85"/>
+</svg>

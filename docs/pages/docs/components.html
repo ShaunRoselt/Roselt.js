@@ -1,0 +1,92 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Components</p>
+    <h1>Roselt.js resolves custom elements lazily from <code>components/</code>.</h1>
+    <p class="doc-page__lead">
+      Components are standard custom elements. Roselt.js discovers the tags present in the rendered DOM and loads the script that registers them when needed.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Automatic component discovery</h2>
+    <p>A tag such as <code>&lt;ui-button&gt;</code> maps to <code>components/ui-button.js</code> by default when Roselt.js sees it in the shell or rendered page. The script should register the element itself.</p>
+<pre class="code-block"><code>Roselt.defineComponent("ui-button", class UiButton extends HTMLElement {
+  connectedCallback() {
+    this.innerHTML = `&lt;button type="button"&gt;${this.getAttribute("label") || "Button"}&lt;/button&gt;`;
+  }
+});</code></pre>
+  </section>
+
+  <section class="doc-section">
+    <h2>Supported component definition shapes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Shape</th>
+          <th>How Roselt.js handles it</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>class MyElement extends HTMLElement</code></td>
+          <td>Registers the constructor immediately if the custom element name is still available.</td>
+        </tr>
+        <tr>
+          <td><code>() =&gt; MyElement</code></td>
+          <td>Waits until the tag appears, then resolves the loader and uses the returned constructor.</td>
+        </tr>
+        <tr>
+          <td><code>"my-element.js"</code></td>
+          <td>Loads and executes the script file, which should call <code>Roselt.defineComponent(...)</code> or <code>customElements.define(...)</code>.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>Manual registration helpers</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Export</th>
+          <th>Use it for</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>defineComponent(tagName, constructor)</code></td>
+          <td>Register a known custom element constructor ahead of time.</td>
+        </tr>
+        <tr>
+          <td><code>lazyComponent(tagName, loader)</code></td>
+          <td>Register a lazy loader that returns either a constructor or a classic script path when Roselt.js encounters the tag.</td>
+        </tr>
+        <tr>
+          <td><code>globalComponentRegistry</code></td>
+          <td>Access the shared registry directly when you need lower-level control.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="doc-section">
+    <h2>Page-specific component declarations</h2>
+    <p>The <code>Roselt.Page.Components</code> setter lets a page register component definitions before that route's components are resolved. URL strings are resolved relative to the page module file.</p>
+<pre class="code-block"><code>Roselt.Page.Components = {
+  "ui-banner": "../components/ui-banner.js"
+};</code></pre>
+  </section>
+
+  <section class="doc-section">
+    <div class="callout">
+      <strong>Keep the platform model</strong>
+      <p>Roselt.js does not invent its own component authoring system. If you already understand custom elements, you understand how the framework expects components to behave.</p>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/sections"><span>Previous</span>Sections</a>
+    <a href="?page=docs/metadata-seo"><span>Next</span>Metadata and SEO</a>
+  </nav>
+</article>

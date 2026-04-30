@@ -1,0 +1,99 @@
+<roselt section="docs-sidebar"></roselt>
+<article class="page-shell doc-page">
+  <header class="doc-page__header">
+    <p class="eyebrow">Getting started</p>
+    <h1>Get a Roselt.js app running with one entry file and a <code>pages/</code> folder.</h1>
+    <p class="doc-page__lead">
+      Roselt.js is optimized for the simplest working shape: an <code>index.html</code> entrypoint, a <code>roselt page</code> root, and routed page files. If you keep query routing, the same setup works cleanly on GitHub Pages.
+    </p>
+  </header>
+
+  <section class="doc-section">
+    <h2>Fastest start: scaffold a project</h2>
+    <p>The quickest way to get a working Roselt.js app is the official scaffold command.</p>
+<pre class="code-block"><code>npm create roselt-js@latest my-app
+cd my-app
+npm install
+npm run dev</code></pre>
+    <p>The generated app includes an <code>index.html</code> entrypoint, a starter shell, a <code>home</code> route, a <code>404</code> route, and a dev script powered by <code>roselt serve</code>.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Start from the minimum</h2>
+    <p>If you want to understand the framework from first principles, create an <code>index.html</code> at the root of your app and use the default directories directly.</p>
+<pre class="code-block"><code>&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+    &lt;title&gt;My Roselt.js App&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;roselt page="home" navigate&gt;&lt;/roselt&gt;
+
+    &lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
+    &lt;script&gt;
+      window.Roselt.start();
+    &lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+    <p>The routed page root must include <code>navigate</code>. If you later add more than one <code>roselt page</code> element, Roselt.js will still only use the one marked with <code>navigate</code> for normal navigation.</p>
+  </section>
+
+  <section class="doc-section">
+    <h2>Add your first route</h2>
+    <p>Roselt.js resolves page files from the folder layout. A default <code>home</code> route maps to <code>pages/home.html</code> and optionally <code>pages/home.js</code> and <code>pages/home.css</code>.</p>
+<pre class="code-block"><code>pages/
+  home.html
+  home.js
+  home.css</code></pre>
+    <p>A minimal <code>pages/home.html</code> file can be pure HTML.</p>
+<pre class="code-block"><code>&lt;section&gt;
+  &lt;h1&gt;Home&lt;/h1&gt;
+  &lt;p&gt;Roselt.js rendered this from pages/home.html.&lt;/p&gt;
+  &lt;a href="?page=docs/getting-started"&gt;Read the docs&lt;/a&gt;
+&lt;/section&gt;</code></pre>
+    <div class="callout">
+      <strong>Browser global</strong>
+      <p>When you load the browser bundle from a CDN or a local file, Roselt.js now exposes <code>window.Roselt.start()</code> directly instead of nesting the API under another namespace.</p>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>Understand the startup behavior</h2>
+    <div class="step-grid">
+      <article class="step-card">
+        <h3>Resolve the shell</h3>
+        <p>Roselt.js resolves any <code>roselt section="..."</code> includes around the page root once at startup so they stay mounted during navigation.</p>
+      </article>
+      <article class="step-card">
+        <h3>Match a route</h3>
+        <p>With query routing, Roselt.js reads the <code>page</code> search parameter and maps it directly to a page file path under <code>pages/</code>.</p>
+      </article>
+      <article class="step-card">
+        <h3>Load behavior and styles</h3>
+        <p>Roselt.js loads the page module if it exists, automatically tries the sibling CSS file, and then swaps the page markup into the page root.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <h2>Recommended next steps</h2>
+    <ul>
+      <li>Use the scaffolded app when you want the fastest path, and the manual setup when you want to see every moving part.</li>
+      <li>Add a shared header and footer with <code>roselt section="site-header"</code> and <code>roselt section="site-footer"</code>.</li>
+      <li>Set <code>Roselt.Page.Title</code> and <code>Roselt.Page.Description</code> inside each page module once you add documentation or marketing pages.</li>
+      <li>Keep query routing if you want the simplest GitHub Pages deployment story.</li>
+    </ul>
+
+    <div class="callout">
+      <strong>Good default</strong>
+      <p>Use <code>?page=</code> URLs until you have a strong reason to switch. Roselt.js pathname routing is useful, but static hosting is easiest when every deep link can stay inside a single <code>index.html</code> request.</p>
+    </div>
+  </section>
+
+  <nav class="doc-pagination" aria-label="Next steps">
+    <a href="?page=docs/installation"><span>Next</span>Installation</a>
+    <a href="?page=docs/project-structure"><span>Then</span>Project structure</a>
+  </nav>
+</article>
