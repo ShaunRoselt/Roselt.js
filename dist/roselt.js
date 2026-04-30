@@ -79,41 +79,6 @@
     return normalizedPath;
   }
 
-  // src/runtime/embedded-resources.js
-  function getEmbeddedResourceMap() {
-    return globalThis.__ROSELT_EMBEDDED_RESOURCES ?? null;
-  }
-  function getEmbeddedResourceKey(resourcePath, baseUrl = document.baseURI) {
-    const resolvedUrl = new URL(resourcePath, baseUrl);
-    const documentUrl = new URL(document.baseURI);
-    if (resolvedUrl.protocol !== documentUrl.protocol) {
-      return null;
-    }
-    return createDocumentRelativeSpecifier(resolvedUrl, documentUrl.href).replace(/^\.\//, "");
-  }
-  function getEmbeddedResourceText(resourcePath, baseUrl = document.baseURI) {
-    const resources = getEmbeddedResourceMap();
-    if (!resources) {
-      return null;
-    }
-    const resourceKey = getEmbeddedResourceKey(resourcePath, baseUrl);
-    if (!resourceKey) {
-      return null;
-    }
-    return typeof resources[resourceKey] === "string" ? resources[resourceKey] : null;
-  }
-  function getEmbeddedResourceState(resourcePath, baseUrl = document.baseURI) {
-    const resources = getEmbeddedResourceMap();
-    if (!resources) {
-      return "unavailable";
-    }
-    const resourceKey = getEmbeddedResourceKey(resourcePath, baseUrl);
-    if (!resourceKey) {
-      return "unavailable";
-    }
-    return typeof resources[resourceKey] === "string" ? "present" : "missing";
-  }
-
   // src/runtime/classic-script-loader.js
   var sourceCache = /* @__PURE__ */ new Map();
   var executionCache = /* @__PURE__ */ new Map();
@@ -126,11 +91,9 @@
   }
   async function readClassicScriptSource(url, { optional = false } = {}) {
     if (!sourceCache.has(url)) {
-      const embeddedSource = getEmbeddedResourceText(url);
-      const embeddedResourceState = getEmbeddedResourceState(url);
       sourceCache.set(
         url,
-        (embeddedSource !== null ? Promise.resolve(embeddedSource) : optional && embeddedResourceState === "missing" ? Promise.resolve(null) : fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
+        fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
           if (!response.ok) {
             if (optional) {
               return null;
@@ -138,7 +101,7 @@
             throw new Error(`Failed to load script: ${url}`);
           }
           return response.text();
-        })).catch((error) => {
+        }).catch((error) => {
           if (optional && isMissingScriptError(error)) {
             return null;
           }
@@ -519,7 +482,7 @@ ${source}
     return activePageContext;
   }
   function readActivePageElement() {
-    return activePageContext?.page ?? activeApp?.outlet ?? null;
+    return activePageContext?.page ?? activeApp?.pageRoot ?? null;
   }
   function requireActivePageElement() {
     const pageElement = readActivePageElement();
@@ -756,15 +719,14 @@ ${source}
     }
     loadHtml(url) {
       if (!this.htmlCache.has(url)) {
-        const embeddedHtml = getEmbeddedResourceText(url);
         this.htmlCache.set(
           url,
-          (embeddedHtml !== null ? Promise.resolve(embeddedHtml) : fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
+          fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
             if (!response.ok) {
               throw createMissingPageError(url);
             }
             return response.text();
-          })).catch((error) => {
+          }).catch((error) => {
             if (isMissingPageFetchError(error)) {
               throw createMissingPageError(url, error);
             }
@@ -792,14 +754,9 @@ ${source}
     loadStylesheet(url, { optional = false } = {}) {
       const cacheKey = `${optional ? "optional" : "required"}:${url}`;
       if (!this.stylesheetCache.has(cacheKey)) {
-        const embeddedStylesheet = getEmbeddedResourceText(url);
-        const embeddedResourceState = getEmbeddedResourceState(url);
         this.stylesheetCache.set(
           cacheKey,
-          (embeddedStylesheet !== null ? Promise.resolve({
-            href: url,
-            cssText: embeddedStylesheet
-          }) : optional && embeddedResourceState === "missing" ? Promise.resolve(null) : fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
+          fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
             if (!response.ok) {
               if (optional) {
                 return null;
@@ -810,7 +767,7 @@ ${source}
               href: url,
               cssText: await response.text()
             };
-          })).catch((error) => {
+          }).catch((error) => {
             if (optional) {
               const message = String(error);
               if (error instanceof TypeError || message.includes("Failed to fetch") || message.includes("NetworkError")) {
@@ -1027,7 +984,7 @@ ${source}
       params: routeMatch.params,
       notFound: routeMatch.notFound ?? null,
       url: currentUrl,
-      page: app.outlet,
+      page: app.pageRoot,
       href: (target, parameters) => app.href(target, parameters, currentUrl),
       navigate: (target, parameters, navigationOptions) => app.navigate(target, parameters, navigationOptions),
       query: Object.fromEntries(currentUrl.searchParams.entries()),
@@ -1088,14 +1045,14 @@ ${source}
       );
       await this.cleanup();
       this.activeStyleElements = this.applyStyles(initialStylesheets, extractedPage.inlineStyles);
-      this.app.outlet.innerHTML = extractedPage.html;
+      this.app.pageRoot.innerHTML = extractedPage.html;
       this.components.registerAll(resolveDefinitions(routeMatch.route.components, document.baseURI));
       this.components.registerAll(resolveDefinitions(page.module.components, page.moduleUrl));
       await this.components.ensureForRoot(
-        this.app.outlet,
+        this.app.pageRoot,
         (tagName) => this.app.resolveComponent(tagName)
       );
-      await this.sections.hydrateRoot(this.app.outlet);
+      await this.sections.hydrateRoot(this.app.pageRoot);
       setActivePageContext(pageContext);
       const loadFunction = page.module.load;
       let runtimeMeta = {};
@@ -1182,7 +1139,7 @@ ${source}
       heading.textContent = "Page Not Found";
       description.textContent = `No Roselt.js page matched ${currentUrl.pathname}${currentUrl.search}.`;
       section.append(heading, description);
-      this.app.outlet.replaceChildren(section);
+      this.app.pageRoot.replaceChildren(section);
       document.title = "Page Not Found";
     }
   };
@@ -1242,10 +1199,9 @@ ${source}
     }
     loadSection(url) {
       if (!this.sectionCache.has(url)) {
-        const embeddedSectionHtml = getEmbeddedResourceText(url);
         this.sectionCache.set(
           url,
-          embeddedSectionHtml !== null ? Promise.resolve(embeddedSectionHtml) : fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
+          fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
             if (!response.ok) {
               throw new Error(`Failed to load section HTML: ${url}`);
             }
@@ -1258,13 +1214,9 @@ ${source}
     loadStylesheet(url, { optional = false } = {}) {
       const cacheKey = `${optional ? "optional" : "required"}:${url}`;
       if (!this.stylesheetCache.has(cacheKey)) {
-        const embeddedStylesheet = getEmbeddedResourceText(url);
         this.stylesheetCache.set(
           cacheKey,
-          (embeddedStylesheet !== null ? Promise.resolve({
-            href: url,
-            cssText: embeddedStylesheet
-          }) : fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
+          fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
             if (!response.ok) {
               if (optional) {
                 return null;
@@ -1275,7 +1227,7 @@ ${source}
               href: url,
               cssText: await response.text()
             };
-          })).catch((error) => {
+          }).catch((error) => {
             if (optional) {
               const message = String(error);
               if (error instanceof TypeError || message.includes("Failed to fetch") || message.includes("NetworkError")) {
@@ -1334,19 +1286,19 @@ ${source}
   };
 
   // src/Roselt.js
-  var DEFAULT_OUTLET_SELECTOR = "roselt[page][navigate]";
-  function resolveOutlet(outlet) {
-    if (typeof outlet !== "string") {
-      return outlet;
+  var DEFAULT_PAGE_ROOT_SELECTOR = "roselt[page][navigate]";
+  function resolvePageRoot(pageRoot) {
+    if (typeof pageRoot !== "string") {
+      return pageRoot;
     }
-    return document.querySelector(outlet);
+    return document.querySelector(pageRoot);
   }
-  function resolveDefaultPage(outlet, configuredDefaultPage) {
+  function resolveDefaultPage(pageRoot, configuredDefaultPage) {
     if (configuredDefaultPage) {
       return configuredDefaultPage;
     }
-    if (outlet instanceof Element && outlet.hasAttribute("page")) {
-      return outlet.getAttribute("page") || "home";
+    if (pageRoot instanceof Element && pageRoot.hasAttribute("page")) {
+      return pageRoot.getAttribute("page") || "home";
     }
     return "home";
   }
@@ -1382,7 +1334,7 @@ ${source}
   var Roselt = class _Roselt {
     constructor(options = {}) {
       const {
-        outlet = DEFAULT_OUTLET_SELECTOR,
+        pageRoot = DEFAULT_PAGE_ROOT_SELECTOR,
         routes = [],
         routingMode = "query",
         queryParam = "page",
@@ -1394,8 +1346,8 @@ ${source}
         defaultPage
       } = options;
       this.routes = routes;
-      this.outlet = resolveOutlet(outlet);
-      const resolvedDefaultPage = resolveDefaultPage(this.outlet, defaultPage);
+      this.pageRoot = resolvePageRoot(pageRoot);
+      const resolvedDefaultPage = resolveDefaultPage(this.pageRoot, defaultPage);
       this.options = {
         routingMode,
         queryParam,
@@ -1405,8 +1357,8 @@ ${source}
         componentsDirectory,
         defaultPage: resolvedDefaultPage
       };
-      if (!this.outlet) {
-        throw new Error("Roselt.js could not find a roselt[page][navigate] outlet.");
+      if (!this.pageRoot) {
+        throw new Error("Roselt.js could not find a roselt[page][navigate] page root.");
       }
       this.loader = new PageLoader();
       this.sections = new SectionLoader({
