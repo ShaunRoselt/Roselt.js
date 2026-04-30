@@ -8,6 +8,18 @@ const starterTemplateDirectory = path.join(rootDirectory, "examples", "starter-a
 const packageJson = JSON.parse(
   await fs.readFile(path.join(rootDirectory, "package.json"), "utf8"),
 );
+const allowedExistingScaffoldEntries = new Set([
+  ".git",
+  ".github",
+  ".gitattributes",
+  ".gitignore",
+  "README",
+  "README.md",
+  "README.txt",
+  "LICENSE",
+  "LICENSE.md",
+  "LICENSE.txt",
+]);
 
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -71,7 +83,7 @@ async function createAppFromArgs(args) {
   await fs.cp(starterTemplateDirectory, targetDirectory, { recursive: true });
 
   await Promise.all([
-    fs.writeFile(path.join(targetDirectory, ".gitignore"), "node_modules/\n", "utf8"),
+    writeGitignore(path.join(targetDirectory, ".gitignore")),
     fs.writeFile(
       path.join(targetDirectory, "README.md"),
       `# ${projectName}\n\nA starter Roselt.js app generated from the official starter template.\n\n## Commands\n\n- npm install\n- npm start\n\nThe local dev server defaults to http://127.0.0.1:42069.\n`,
@@ -122,13 +134,13 @@ async function replaceInFile(filePath, searchValue, replacementValue) {
 
 function printRoseltHelp() {
   console.log(
-    "Roselt.js CLI\n\nUsage:\n  roselt create <app-name>\n  roselt serve [root] [--host 127.0.0.1] [--port 42069]\n\nExamples:\n  npm create roselt-js@latest my-app\n  npx roselt-js create my-app\n  cd my-app && npm install && npm start",
+    "Roselt.js CLI\n\nUsage:\n  roselt create <path>\n  roselt serve [root] [--host 127.0.0.1] [--port 42069]\n\nExamples:\n  npm create roselt-js@latest my-app\n  npm create roselt-js@latest .\n  npx roselt-js create my-app\n  cd my-app && npm install && npm start",
   );
 }
 
 function printCreateHelp() {
   console.log(
-    "Create a Roselt.js app\n\nUsage:\n  npm create roselt-js@latest <app-name>\n\nExample:\n  npm create roselt-js@latest my-app",
+    "Create a Roselt.js app\n\nUsage:\n  npm create roselt-js@latest <path>\n\nExamples:\n  npm create roselt-js@latest my-app\n  npm create roselt-js@latest .",
   );
 }
 
@@ -142,12 +154,52 @@ async function ensureTargetDirectory(targetDirectory) {
 
     const existingEntries = await fs.readdir(targetDirectory);
 
-    if (existingEntries.length > 0) {
-      throw new Error(`Target directory is not empty: ${targetDirectory}`);
+    const unsupportedEntries = existingEntries.filter((entry) => !isAllowedExistingScaffoldEntry(entry));
+
+    if (unsupportedEntries.length > 0) {
+      throw new Error(
+        `Target directory is not empty: ${targetDirectory}. Existing directories are only supported when they contain repo bootstrap files such as .git, .github, .gitignore, README, and LICENSE. Found unsupported entries: ${unsupportedEntries.join(", ")}`,
+      );
     }
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       await fs.mkdir(targetDirectory, { recursive: true });
+      return;
+    }
+
+    throw error;
+  }
+}
+
+function isAllowedExistingScaffoldEntry(entryName) {
+  if (allowedExistingScaffoldEntries.has(entryName)) {
+    return true;
+  }
+
+  const normalizedEntryName = entryName.toLowerCase();
+
+  return normalizedEntryName === "readme"
+    || normalizedEntryName === "readme.md"
+    || normalizedEntryName === "readme.txt"
+    || normalizedEntryName === "license"
+    || normalizedEntryName === "license.md"
+    || normalizedEntryName === "license.txt";
+}
+
+async function writeGitignore(filePath) {
+  try {
+    const existingContent = await fs.readFile(filePath, "utf8");
+
+    if (existingContent.split(/\r?\n/).some((line) => line.trim() === "node_modules/")) {
+      return;
+    }
+
+    const trimmedContent = existingContent.replace(/\s+$/u, "");
+    const nextContent = trimmedContent ? `${trimmedContent}\nnode_modules/\n` : "node_modules/\n";
+    await fs.writeFile(filePath, nextContent, "utf8");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      await fs.writeFile(filePath, "node_modules/\n", "utf8");
       return;
     }
 
