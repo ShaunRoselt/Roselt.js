@@ -22,7 +22,7 @@ The recommended way to start a new project is:
 npm create roselt-js@latest my-app
 cd my-app
 npm install
-npm run dev
+npm start
 ```
 
 If you want the CLI directly, this works too:
