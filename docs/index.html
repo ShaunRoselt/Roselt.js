@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Roselt.js - Coming Soon!</title>
+  <title>Coming Soon</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     * {
@@ -14,8 +14,9 @@
     body {
       min-height: 100vh;
       display: flex;
-      align-items: center;
+      flex-direction: column;
       justify-content: center;
+      align-items: center;
       background: #0f172a;
       color: #e5e7eb;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -35,12 +36,19 @@
       font-size: 1rem;
       color: #9ca3af;
     }
+
+    .emoji {
+      font-size: 3rem;
+      margin-top: 2rem;
+      opacity: 0.8;
+    }
   </style>
 </head>
 <body>
   <div class="wrapper">
     <h1>Some cool shit coming soon.</h1>
     <p>Stay tuned!</p>
+    <div class="emoji">🖕</div>
   </div>
 </body>
 </html>
