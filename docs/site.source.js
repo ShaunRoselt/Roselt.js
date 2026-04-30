@@ -9,11 +9,15 @@ function updateMode(pageId) {
   }
 }
 
+function resolvePageRoot(app) {
+  return app?.pageRoot ?? app?.outlet ?? document.querySelector("roselt[page][navigate]");
+}
+
 function syncDocsSidebar(app, pageId) {
   const siteMain = document.querySelector(".site-main");
   const pageColumn = siteMain?.querySelector(".site-page-column");
   const existingSidebar = siteMain?.querySelector(".docs-sidebar");
-  const pageRootSidebar = app?.pageRoot?.querySelector(".docs-sidebar");
+  const pageRootSidebar = resolvePageRoot(app)?.querySelector(".docs-sidebar");
 
   if (!(siteMain instanceof HTMLElement) || !(pageColumn instanceof HTMLElement)) {
     return;
@@ -60,7 +64,7 @@ function initializeSiteChrome(app) {
   globalThis.__roseltDocsChromeInitialized = true;
 
   let refreshScheduled = false;
-  const pageRoot = app?.pageRoot ?? document.querySelector("roselt[page][navigate]");
+  const pageRoot = resolvePageRoot(app);
 
   const refreshChrome = () => {
     syncChrome(app);
