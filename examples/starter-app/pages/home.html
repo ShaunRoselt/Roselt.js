@@ -1,0 +1,35 @@
+<section class="hero">
+  <p class="eyebrow">Roselt.js starter</p>
+  <h1>Ship from files, not framework ceremony.</h1>
+  <p class="hero-copy">
+    This starter app is already wired for file-based pages, persistent shell sections, and query-based routing. Start by editing <code>pages/home.html</code> and <code>sections/site-header.html</code>.
+  </p>
+
+  <div class="button-row">
+    <custom-button href="?page=home">Home route</custom-button>
+    <custom-button href="?page=about" variant="secondary">Open about page</custom-button>
+    <custom-button href="?page=missing-example" variant="secondary">Trigger 404</custom-button>
+  </div>
+</section>
+
+<section class="grid">
+  <article class="panel">
+    <h2>Where routes live</h2>
+    <p>Every route is just a file inside <code>pages/</code>. Add <code>pages/about.html</code> and navigate to <code>?page=about</code>.</p>
+  </article>
+
+  <article class="panel">
+    <h2>Keep the shell mounted</h2>
+    <p>Shared chrome belongs in <code>sections/</code>, so headers, footers, and sidebars do not remount on every route change.</p>
+  </article>
+
+  <article class="panel">
+    <h2>Add components from files</h2>
+    <p>Drop a custom element script in <code>components/</code> and render its tag in your page HTML. Roselt.js will discover and load it automatically.</p>
+  </article>
+
+  <article class="panel">
+    <h2>Add page behavior</h2>
+    <p>Pair markup with <code>pages/home.js</code> when the route needs metadata or client-side behavior.</p>
+  </article>
+</section>
