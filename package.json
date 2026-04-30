@@ -1,0 +1,50 @@
+{
+  "name": "roselt-js",
+  "version": "0.1.0",
+  "description": "Roselt.js is a vanilla JavaScript SPA framework built on the Navigation API.",
+  "type": "module",
+  "main": "./src/index.js",
+  "bin": {
+    "roselt": "./bin/roselt.js",
+    "roselt-js": "./bin/roselt-js.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./cli": "./scripts/cli-core.js",
+    "./dist/roselt.js": "./dist/roselt.js",
+    "./dist/roselt.min.js": "./dist/roselt.min.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "examples/starter-app",
+    "src",
+    "scripts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node ./scripts/build.js",
+    "check": "node --check ./bin/roselt.js && node --check ./bin/roselt-js.js && node --check ./scripts/build.js && node --check ./scripts/cli-core.js && node --check ./scripts/cli.js && node --check ./scripts/dev-server.js && node --check ./packages/create-roselt-js/index.js",
+    "create": "node ./scripts/cli.js create",
+    "serve": "node ./scripts/dev-server.js",
+    "serve:example": "node ./scripts/dev-server.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  },
+  "keywords": [
+    "spa",
+    "navigation-api",
+    "router",
+    "framework",
+    "vanilla-js",
+    "github-pages"
+  ],
+  "author": "Shaun Roselt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShaunRoselt/Roselt.js.git"
+  },
+  "license": "MIT"
+}
