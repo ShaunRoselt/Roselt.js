@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Roselt Starter App</title>
+		<meta
+			name="description"
+			content="A starter Roselt.js application."
+		>
+		<link rel="stylesheet" href="./index.css">
+	</head>
+	<body>
+		<div class="app-shell">
+			<roselt section="site-header"></roselt>
+
+			<main class="app-main">
+				<roselt page="home" navigate></roselt>
+			</main>
+
+			<roselt section="site-footer"></roselt>
+		</div>
+
+		<script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@latest/dist/roselt.js"></script>
+		<script>
+			window.Roselt.start();
+		</script>
+	</body>
+</html>
