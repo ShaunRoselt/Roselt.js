@@ -74,7 +74,7 @@ async function createAppFromArgs(args) {
     fs.writeFile(path.join(targetDirectory, ".gitignore"), "node_modules/\n", "utf8"),
     fs.writeFile(
       path.join(targetDirectory, "README.md"),
-      `# ${projectName}\n\nA starter Roselt.js app generated from the official starter template.\n\n## Commands\n\n- npm install\n- npm run dev\n\nThe local dev server defaults to http://127.0.0.1:42069.\n`,
+      `# ${projectName}\n\nA starter Roselt.js app generated from the official starter template.\n\n## Commands\n\n- npm install\n- npm start\n\nThe local dev server defaults to http://127.0.0.1:42069.\n`,
       "utf8",
     ),
     fs.writeFile(
@@ -85,7 +85,6 @@ async function createAppFromArgs(args) {
           private: true,
           type: "module",
           scripts: {
-            dev: "roselt serve",
             start: "roselt serve",
           },
           devDependencies: {
@@ -113,7 +112,7 @@ async function createAppFromArgs(args) {
   console.log("Next steps:");
   console.log(`  cd ${displayPathForShell(targetDirectory)}`);
   console.log("  npm install");
-  console.log("  npm run dev");
+  console.log("  npm start");
 }
 
 async function replaceInFile(filePath, searchValue, replacementValue) {
@@ -123,7 +122,7 @@ async function replaceInFile(filePath, searchValue, replacementValue) {
 
 function printRoseltHelp() {
   console.log(
-    "Roselt.js CLI\n\nUsage:\n  roselt create <app-name>\n  roselt serve [root] [--host 127.0.0.1] [--port 42069]\n\nExamples:\n  npm create roselt-js@latest my-app\n  npx roselt-js create my-app\n  cd my-app && npm install && npm run dev",
+    "Roselt.js CLI\n\nUsage:\n  roselt create <app-name>\n  roselt serve [root] [--host 127.0.0.1] [--port 42069]\n\nExamples:\n  npm create roselt-js@latest my-app\n  npx roselt-js create my-app\n  cd my-app && npm install && npm start",
   );
 }
 
