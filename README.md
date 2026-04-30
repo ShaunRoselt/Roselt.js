@@ -25,6 +25,16 @@ npm install
 npm start
 ```
 
+If you already created or cloned a fresh repository, you can scaffold directly into that repo root:
+
+```bash
+npm create roselt-js@latest .
+npm install
+npm start
+```
+
+That works when the directory only contains repo bootstrap files such as `.git`, `.github`, `.gitignore`, `README*`, or `LICENSE*`.
+
 If you want the CLI directly, this works too:
 
 ```bash

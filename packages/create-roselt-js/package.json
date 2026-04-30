@@ -1,13 +1,13 @@
 {
   "name": "create-roselt-js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Official create command for Roselt.js starter apps.",
   "type": "module",
   "bin": {
-    "create-roselt-js": "./index.js"
+    "create-roselt-js": "index.js"
   },
   "dependencies": {
-    "roselt-js": "^0.1.0"
+    "roselt-js": "^0.1.1"
   },
   "license": "MIT"
 }
