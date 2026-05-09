@@ -1,5 +1,6 @@
 import { loadClassicScript } from "./classic-script-loader.js";
 import { resolveBrowserLoadUrl, resolveUrl } from "../utils/resolve-url.js";
+import { createRoseltErrorMarkup, reportRoseltResourceError } from "./dev-error-overlay.js";
 
 function createSiblingResourceUrl(sectionUrl, extension) {
   const url = new URL(sectionUrl);
@@ -16,12 +17,110 @@ function isShorthandSectionReference(value) {
   return Boolean(value) && !value.includes("/") && !value.includes(".") && !value.includes(":");
 }
 
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function createCodeFrame(source, lineNumber) {
+  const lines = String(source || "").split("\n");
+
+  if (!lineNumber || lineNumber < 1 || lineNumber > lines.length) {
+    return null;
+  }
+
+  const startLine = Math.max(1, lineNumber - 2);
+  const endLine = Math.min(lines.length, lineNumber + 2);
+
+  return {
+    startLine,
+    endLine,
+    highlightLine: lineNumber,
+    lines: lines.slice(startLine - 1, endLine).map((text, index) => ({
+      lineNumber: startLine + index,
+      text,
+      highlight: startLine + index === lineNumber,
+    })),
+  };
+}
+
+function findIncludeMatch(source, includeNode, src) {
+  const exactMarkup = includeNode?.outerHTML;
+
+  if (exactMarkup) {
+    const exactIndex = source.indexOf(exactMarkup);
+
+    if (exactIndex >= 0) {
+      return {
+        index: exactIndex,
+        text: exactMarkup,
+      };
+    }
+  }
+
+  const sectionPattern = new RegExp(
+    `<roselt\\b[^>]*\\bsection\\s*=\\s*(["'])${escapeRegExp(src)}\\1[^>]*>(?:\\s*<\\/roselt>)?`,
+    "i",
+  );
+  const match = sectionPattern.exec(source);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    index: match.index,
+    text: match[0],
+  };
+}
+
+function createSourceLocation(url, source, match) {
+  if (!match) {
+    return null;
+  }
+
+  const prefix = source.slice(0, match.index);
+  const line = prefix.split("\n").length;
+  const lastNewline = prefix.lastIndexOf("\n");
+  const column = match.index - lastNewline;
+
+  return {
+    url,
+    line,
+    column,
+    codeFrame: createCodeFrame(source, line),
+  };
+}
+
+function createMissingSectionError(url, reference, cause) {
+  const error = new Error(`Failed to load section HTML: ${url}`);
+  error.code = "ROSELT_SECTION_NOT_FOUND";
+  error.sectionUrl = url;
+  error.sectionReference = reference;
+  error.cause = cause;
+  return error;
+}
+
+function isMissingSectionFetchError(error) {
+  if (error?.code === "ROSELT_SECTION_NOT_FOUND") {
+    return true;
+  }
+
+  const message = String(error);
+
+  return (
+    error instanceof TypeError ||
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError")
+  );
+}
+
 export class SectionLoader {
   constructor(options = {}) {
     const { sectionsDirectory = "sections" } = options;
 
     this.sectionsDirectory = sectionsDirectory;
     this.sectionCache = new Map();
+    this.sourceCache = new Map();
     this.stylesheetCache = new Map();
     this.appliedStylesheets = new Map();
   }
@@ -53,12 +152,70 @@ export class SectionLoader {
       const sectionUrl = isShorthandSectionReference(src)
         ? resolveUrl(`${this.sectionsDirectory}/${src}.html`, document.baseURI)
         : resolveUrl(src, baseUrl);
-      const sectionHtml = await this.loadSection(sectionUrl);
-      const resolvedHtml = await this.resolveIncludes(sectionHtml, sectionUrl);
-      const replacement = document.createRange().createContextualFragment(resolvedHtml);
-      this.annotateSectionFragment(replacement, sectionUrl);
-      includeNode.replaceWith(replacement);
+
+      try {
+        const sectionHtml = await this.loadSection(sectionUrl, src);
+        const resolvedHtml = await this.resolveIncludes(sectionHtml, sectionUrl);
+        const replacement = document.createRange().createContextualFragment(resolvedHtml);
+        this.annotateSectionFragment(replacement, sectionUrl);
+        includeNode.replaceWith(replacement);
+      } catch (error) {
+        if (error?.code !== "ROSELT_SECTION_NOT_FOUND") {
+          throw error;
+        }
+
+        const includeLocation = await this.resolveIncludeLocation(baseUrl, includeNode, src);
+
+        const details = reportRoseltResourceError({
+          kind: "section",
+          resourceType: "section file",
+          title: "Missing Section File",
+          message: "Roselt.js could not load a referenced section, so a placeholder was rendered in its place.",
+          reference: src,
+          requestedUrl: sectionUrl,
+          source: includeLocation?.url || baseUrl,
+          topFrame: includeLocation
+            ? {
+                functionName: "roselt[section]",
+                url: includeLocation.url,
+                line: includeLocation.line,
+                column: includeLocation.column,
+              }
+            : null,
+          codeFrame: includeLocation?.codeFrame || null,
+          stack: includeLocation ? "" : undefined,
+          cause: error,
+        });
+        const replacement = document.createRange().createContextualFragment(
+          createRoseltErrorMarkup(details),
+        );
+
+        includeNode.replaceWith(replacement);
+      }
     }
+  }
+
+  async loadSource(url) {
+    if (!this.sourceCache.has(url)) {
+      this.sourceCache.set(
+        url,
+        fetch(resolveBrowserLoadUrl(url))
+          .then(async (response) => (response.ok ? response.text() : null))
+          .catch(() => null),
+      );
+    }
+
+    return this.sourceCache.get(url);
+  }
+
+  async resolveIncludeLocation(baseUrl, includeNode, src) {
+    const source = await this.loadSource(baseUrl);
+
+    if (!source) {
+      return null;
+    }
+
+    return createSourceLocation(baseUrl, source, findIncludeMatch(source, includeNode, src));
   }
 
   annotateSectionFragment(fragment, sectionUrl) {
@@ -71,17 +228,25 @@ export class SectionLoader {
     }
   }
 
-  loadSection(url) {
+  loadSection(url, reference = "") {
     if (!this.sectionCache.has(url)) {
       this.sectionCache.set(
         url,
-        fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
-          if (!response.ok) {
-            throw new Error(`Failed to load section HTML: ${url}`);
-          }
+        fetch(resolveBrowserLoadUrl(url))
+          .then(async (response) => {
+            if (!response.ok) {
+              throw createMissingSectionError(url, reference);
+            }
 
-          return response.text();
-        }),
+            return response.text();
+          })
+          .catch((error) => {
+            if (isMissingSectionFetchError(error)) {
+              throw createMissingSectionError(url, reference, error);
+            }
+
+            throw error;
+          }),
       );
     }
 

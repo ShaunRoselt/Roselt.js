@@ -1,5 +1,6 @@
 import { applyHead } from "../seo/head-manager.js";
 import { resolveUrl } from "../utils/resolve-url.js";
+import { createRoseltErrorMarkup, ensureRoseltErrorStyles, lockRoseltOverlayScroll, unlockRoseltOverlayScroll } from "./dev-error-overlay.js";
 import { clearActivePageContext, setActivePageContext } from "./page-script.js";
 
 const NOT_FOUND_PAGE_ID = "404";
@@ -210,7 +211,7 @@ export class RenderEngine {
       await this.renderPage(routeMatch, currentUrl);
     } catch (error) {
       if (this.loader.isMissingPageError(error)) {
-        await this.renderNotFound(currentUrl, routeMatch);
+        await this.renderMissingPage(routeMatch, currentUrl, error);
         return;
       }
 
@@ -240,6 +241,7 @@ export class RenderEngine {
 
     this.activeStyleElements = this.applyStyles(initialStylesheets, extractedPage.inlineStyles);
 
+    this.app.pageRoot.setAttribute("data-roselt-page-source", page.htmlUrl);
     this.app.pageRoot.innerHTML = extractedPage.html;
 
     this.components.registerAll(resolveDefinitions(routeMatch.route.components, document.baseURI));
@@ -320,6 +322,8 @@ export class RenderEngine {
 
     this.pageCleanup = null;
 
+    this.app.pageRoot.removeAttribute("data-roselt-page-source");
+
     for (const styleElement of this.activeStyleElements) {
       styleElement.remove();
     }
@@ -360,5 +364,50 @@ export class RenderEngine {
     section.append(heading, description);
     this.app.pageRoot.replaceChildren(section);
     document.title = "Page Not Found";
+  }
+
+  async renderMissingPage(routeMatch, currentUrl, error) {
+    await this.cleanup();
+
+    ensureRoseltErrorStyles();
+
+    console.error(
+      "[Roselt.js] Roselt.js could not load the requested page HTML, so a full-screen error page was rendered instead.",
+      error,
+    );
+
+    const details = {
+      kind: "page",
+      resourceType: "page file",
+      title: "Missing Page File",
+      message: "Roselt.js could not load the requested page HTML, so a developer error page was rendered instead.",
+      reference: routeMatch.route?.name || routeMatch.route?.path || currentUrl.pathname,
+      requestedUrl: error?.pageUrl || routeMatch.route?.html || "",
+      source: currentUrl.href,
+      cause: error,
+    };
+
+    this.app.pageRoot.innerHTML = createRoseltErrorMarkup(details, { variant: "page" });
+
+    // When showing the full-page error variant, lock the page scroll so only the overlay scrolls
+    try {
+      lockRoseltOverlayScroll(document);
+    } catch (_) {
+      // best-effort
+    }
+
+    const closeButton = this.app.pageRoot.querySelector(".roselt-runtime-error-close");
+
+    if (closeButton instanceof HTMLButtonElement) {
+      closeButton.addEventListener("click", () => {
+        try {
+          unlockRoseltOverlayScroll(document);
+        } catch (_) {
+          // best-effort
+        }
+
+        this.app.pageRoot.innerHTML = "";
+      });
+    }
   }
 }

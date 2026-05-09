@@ -2,6 +2,7 @@ import { globalComponentRegistry } from "./components/component-registry.js";
 import { NavigationRouter } from "./router/navigation-router.js";
 import { createHrefBuilder, resolveRoute } from "./router/route-resolver.js";
 import { loadClassicScript } from "./runtime/classic-script-loader.js";
+import { reportRoseltRuntimeError } from "./runtime/dev-error-overlay.js";
 import { PageLoader } from "./runtime/page-loader.js";
 import { clearActiveRoseltApp, setActiveRoseltApp } from "./runtime/page-script.js";
 import { RenderEngine } from "./runtime/render-engine.js";
@@ -109,8 +110,27 @@ export class Roselt {
     this.renderer = new RenderEngine(this, this.loader, this.sections, this.components);
     this.router = new NavigationRouter(this);
     this.started = false;
+    this.handleWindowError = this.handleWindowError.bind(this);
+    this.handleUnhandledRejection = this.handleUnhandledRejection.bind(this);
 
     this.href = createHrefBuilder(this.routes, this.options);
+  }
+
+  handleWindowError(event) {
+    if (!event?.error) {
+      return;
+    }
+
+    reportRoseltRuntimeError(event.error, {
+      filename: event.filename,
+      description: event.message || "An uncaught runtime error happened while Roselt.js was running the current page.",
+    });
+  }
+
+  handleUnhandledRejection(event) {
+    reportRoseltRuntimeError(event?.reason, {
+      description: "An unhandled promise rejection happened while Roselt.js was running the current page.",
+    });
   }
 
   async ensureEntryAssets() {
@@ -151,6 +171,8 @@ export class Roselt {
       await this.sections.hydrateRoot(document.body);
 
       this.router.start();
+      window.addEventListener("error", this.handleWindowError);
+      window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
       setActiveRoseltApp(this);
       this.started = true;
       return this.router.bootstrap();
@@ -159,6 +181,8 @@ export class Roselt {
 
   stop() {
     this.router.stop();
+    window.removeEventListener("error", this.handleWindowError);
+    window.removeEventListener("unhandledrejection", this.handleUnhandledRejection);
     clearActiveRoseltApp(this);
     this.started = false;
   }
