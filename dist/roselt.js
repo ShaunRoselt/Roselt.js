@@ -143,7 +143,728 @@ ${source}
     return executionCache.get(cacheKey);
   }
 
+  // src/runtime/dev-error-overlay.js
+  var STYLE_ID = "roselt-runtime-error-style";
+  var PANEL_ID = "roselt-runtime-error-panel";
+  var errorEntries = [];
+  var errorKeys = /* @__PURE__ */ new Set();
+  var pendingCodeFrames = /* @__PURE__ */ new Map();
+  var dismissed = false;
+  var _overlayActive = false;
+  var _prevHtmlOverflow = null;
+  var _prevBodyOverflow = null;
+  function readErrorName(cause) {
+    return cause?.name || "Error";
+  }
+  function readErrorMessage(details = {}) {
+    if (details.message) {
+      return details.message;
+    }
+    if (details.cause?.message) {
+      return details.cause.message;
+    }
+    return `Roselt.js could not load the ${details.resourceType || details.kind || "resource"}.`;
+  }
+  function readStackString(cause) {
+    return typeof cause?.stack === "string" ? cause.stack : "";
+  }
+  function trimFunctionName(value) {
+    return String(value || "").replace(/^async\s+/, "").trim();
+  }
+  function shortenUrl(url) {
+    if (!url) {
+      return "";
+    }
+    try {
+      const parsed = new URL(url, document.baseURI);
+      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    } catch {
+      return String(url);
+    }
+  }
+  function parseStackFrames(stack) {
+    const frames = [];
+    for (const line of String(stack || "").split("\n")) {
+      const chromiumMatch = line.match(/^\s*at\s+(?:(.*?)\s+\()?(.+?):(\d+):(\d+)\)?$/);
+      if (chromiumMatch) {
+        frames.push({
+          functionName: trimFunctionName(chromiumMatch[1]),
+          url: chromiumMatch[2],
+          line: Number(chromiumMatch[3]),
+          column: Number(chromiumMatch[4])
+        });
+        continue;
+      }
+      const firefoxMatch = line.match(/^(.*?)@(.+?):(\d+):(\d+)$/);
+      if (firefoxMatch) {
+        frames.push({
+          functionName: trimFunctionName(firefoxMatch[1]),
+          url: firefoxMatch[2],
+          line: Number(firefoxMatch[3]),
+          column: Number(firefoxMatch[4])
+        });
+      }
+    }
+    return frames;
+  }
+  function formatStackFrame(frame) {
+    if (!frame?.url || !frame?.line || !frame?.column) {
+      return "";
+    }
+    const location = `${shortenUrl(frame.url)}:${frame.line}:${frame.column}`;
+    if (frame.functionName) {
+      return `${frame.functionName} (${location})`;
+    }
+    return location;
+  }
+  function canFetchCodeFrame(url) {
+    if (typeof window === "undefined" || !url) {
+      return false;
+    }
+    try {
+      const parsed = new URL(url, document.baseURI);
+      return parsed.origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  }
+  function extractCodeFrame(source, lineNumber) {
+    const lines = String(source || "").split("\n");
+    if (!lineNumber || lineNumber < 1 || lineNumber > lines.length) {
+      return null;
+    }
+    const startLine = Math.max(1, lineNumber - 2);
+    const endLine = Math.min(lines.length, lineNumber + 2);
+    return {
+      startLine,
+      endLine,
+      highlightLine: lineNumber,
+      lines: lines.slice(startLine - 1, endLine).map((text, index) => ({
+        lineNumber: startLine + index,
+        text,
+        highlight: startLine + index === lineNumber
+      }))
+    };
+  }
+  function renderCodeFrameMarkup(codeFrame) {
+    if (!codeFrame?.lines?.length) {
+      return "";
+    }
+    return `
+    <section class="roselt-runtime-error-codeframe">
+      <h4>Source</h4>
+      <pre>${codeFrame.lines.map(
+      (line) => `<div class="roselt-runtime-error-codeframe-line${line.highlight ? " is-highlighted" : ""}"><span class="roselt-runtime-error-gutter">${line.lineNumber}</span><span class="roselt-runtime-error-code">${escapeHtml(line.text || " ")}</span></div>`
+    ).join("")}</pre>
+    </section>
+  `;
+  }
+  async function enrichErrorWithCodeFrame(details) {
+    if (details.codeFrame || !details.topFrame?.url || !details.topFrame?.line) {
+      return;
+    }
+    if (!canFetchCodeFrame(details.topFrame.url)) {
+      return;
+    }
+    const cacheKey = `${details.topFrame.url}:${details.topFrame.line}`;
+    if (!pendingCodeFrames.has(cacheKey)) {
+      pendingCodeFrames.set(
+        cacheKey,
+        fetch(details.topFrame.url).then((response) => response.ok ? response.text() : null).then((source) => extractCodeFrame(source, details.topFrame.line)).catch(() => null)
+      );
+    }
+    const codeFrame = await pendingCodeFrames.get(cacheKey);
+    if (codeFrame) {
+      details.codeFrame = codeFrame;
+      renderPanel();
+    }
+  }
+  function escapeHtml(value) {
+    return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  }
+  function formatLabel(value) {
+    return String(value || "resource").replaceAll(/[-_]+/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+  }
+  function createErrorKey(details) {
+    return [
+      details.kind,
+      details.resourceType,
+      details.reference,
+      details.requestedUrl,
+      details.source,
+      details.message
+    ].filter(Boolean).join("|");
+  }
+  function normalizeDetails(details = {}) {
+    const message = readErrorMessage(details);
+    const stack = details.stack || readStackString(details.cause);
+    const stackFrames = parseStackFrames(stack);
+    const topFrame = details.topFrame || stackFrames[0] || null;
+    const errorName = details.errorName || readErrorName(details.cause);
+    return {
+      kind: details.kind || "resource",
+      resourceType: details.resourceType || details.kind || "resource",
+      title: details.title || `Missing ${formatLabel(details.resourceType || details.kind || "resource")}`,
+      message,
+      errorName,
+      reference: details.reference || "",
+      requestedUrl: details.requestedUrl || "",
+      source: details.source || "",
+      cause: details.cause || null,
+      stack,
+      stackFrames,
+      topFrame,
+      codeFrame: details.codeFrame || null
+    };
+  }
+  function createMetadataRows(details) {
+    return [
+      details.errorName ? ["Type", details.errorName] : null,
+      details.topFrame ? ["Location", formatStackFrame(details.topFrame)] : null,
+      details.reference ? ["Reference", details.reference] : null,
+      details.source ? ["Referenced From", details.source] : null,
+      details.requestedUrl ? ["Resolved URL", details.requestedUrl] : null,
+      details.cause?.message ? ["Cause", details.cause.message] : null
+    ].filter(Boolean);
+  }
+  function createStackMarkup(details) {
+    if (!details.stack) {
+      return "";
+    }
+    return `
+    <section class="roselt-runtime-error-stack">
+      <h4>Stack Trace</h4>
+      <pre>${escapeHtml(details.stack)}</pre>
+    </section>
+  `;
+  }
+  function createEntryMarkup(details) {
+    const metadata = createMetadataRows(details).map(
+      ([label, value]) => `<div class="roselt-runtime-error-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
+    ).join("");
+    return `
+    <li class="roselt-runtime-error-item">
+      <div class="roselt-runtime-error-badge">ERROR</div>
+      <h3>${escapeHtml(details.title)}</h3>
+      <p>${escapeHtml(details.message)}</p>
+      ${metadata ? `<dl>${metadata}</dl>` : ""}
+      ${renderCodeFrameMarkup(details.codeFrame)}
+      ${createStackMarkup(details)}
+    </li>
+  `;
+  }
+  function createPanelCopy(entries) {
+    if (entries.some((entry) => entry.kind === "runtime")) {
+      return {
+        heading: "Uncaught runtime errors:",
+        description: "Roselt.js caught an uncaught error and kept the current app visible so you can inspect the failure."
+      };
+    }
+    return {
+      heading: "Roselt.js Missing Files",
+      description: "Rendering continued where possible so you can inspect the rest of the app."
+    };
+  }
+  function ensureStyles(documentRef) {
+    if (documentRef.getElementById(STYLE_ID)) {
+      return;
+    }
+    const style = documentRef.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+    #${PANEL_ID} {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      align-items: stretch;
+      padding: 24px;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+      z-index: 2147483647;
+      background: #111111;
+      color: #f3f4f6;
+      font: 14px/1.55 "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    #${PANEL_ID},
+    #${PANEL_ID} *,
+    .roselt-runtime-error-placeholder,
+    .roselt-runtime-error-placeholder * {
+      box-sizing: border-box;
+    }
+
+    #${PANEL_ID}[hidden] {
+      display: none;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-shell {
+      width: min(1180px, 100%);
+      margin: auto;
+      min-height: calc(100vh - 48px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 20px;
+      overflow-x: hidden;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-header {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 0;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-header h2 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 2.6rem);
+      line-height: 1.2;
+      color: #ff5f56;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-header p {
+      margin: 6px 0 0;
+      color: #c7c7c7;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-close {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #fff;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+      flex: none;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-content {
+      display: grid;
+      align-content: start;
+      gap: 16px;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-item,
+    .roselt-runtime-error-placeholder {
+      background: #2a1717;
+      border: 1px solid #523030;
+      border-radius: 0;
+      padding: 20px;
+      color: #f3f4f6;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-badge,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-badge {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #ff5f56;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-item h3,
+    .roselt-runtime-error-placeholder h2,
+    .roselt-runtime-error-placeholder h3 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      line-height: 1.35;
+      color: #ff7b72;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-item p,
+    .roselt-runtime-error-placeholder p {
+      margin: 0 0 10px;
+      color: #f3d6d6;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-item dl,
+    .roselt-runtime-error-placeholder dl {
+      margin: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-row,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-row {
+      display: grid;
+      gap: 4px;
+    }
+
+    #${PANEL_ID} dt,
+    .roselt-runtime-error-placeholder dt {
+      font-weight: 600;
+      color: #fca5a5;
+    }
+
+    #${PANEL_ID} dd,
+    .roselt-runtime-error-placeholder dd {
+      margin: 0;
+      font-family: "IBM Plex Mono", "Consolas", monospace;
+      font-size: 13px;
+      color: #f8e6e6;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-stack,
+    #${PANEL_ID} .roselt-runtime-error-codeframe,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-stack,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-codeframe {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-stack h4,
+    #${PANEL_ID} .roselt-runtime-error-codeframe h4,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-stack h4,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-codeframe h4 {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #fca5a5;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-stack pre,
+    #${PANEL_ID} .roselt-runtime-error-codeframe pre,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-stack pre,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-codeframe pre {
+      margin: 0;
+      padding: 14px;
+      background: #130d0d;
+      border: 1px solid #3a2323;
+      overflow: visible;
+      color: #f5e4e4;
+      font: 13px/1.55 "IBM Plex Mono", "Consolas", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-codeframe-line,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-codeframe-line {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 12px;
+      padding: 1px 0;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-codeframe-line.is-highlighted,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-codeframe-line.is-highlighted {
+      background: rgba(255, 95, 86, 0.12);
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-gutter,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-gutter {
+      color: #fca5a5;
+      text-align: right;
+      user-select: none;
+    }
+
+    #${PANEL_ID} .roselt-runtime-error-code,
+    .roselt-runtime-error-placeholder .roselt-runtime-error-code {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .roselt-runtime-error-placeholder[data-roselt-error-variant="page"] {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483647;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      background: #111111;
+      color: #f3f4f6;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    .roselt-runtime-error-placeholder[data-roselt-error-variant="page"] .roselt-runtime-error-page-shell {
+      width: min(960px, 100%);
+      border: 1px solid #523030;
+      border-radius: 0;
+      background: #2a1717;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+      overflow-x: hidden;
+    }
+
+    .roselt-runtime-error-placeholder[data-roselt-error-variant="page"] .roselt-runtime-error-close {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+  `;
+    documentRef.head.append(style);
+  }
+  function ensureRoseltErrorStyles(documentRef = document) {
+    if (typeof documentRef === "undefined" || !documentRef.head) {
+      return;
+    }
+    ensureStyles(documentRef);
+  }
+  function ensurePanel(documentRef) {
+    let panel = documentRef.getElementById(PANEL_ID);
+    if (panel) {
+      return panel;
+    }
+    panel = documentRef.createElement("aside");
+    panel.id = PANEL_ID;
+    panel.hidden = true;
+    panel.innerHTML = `
+    <div class="roselt-runtime-error-shell">
+      <div class="roselt-runtime-error-header">
+        <div>
+          <h2 class="roselt-runtime-error-title">Roselt.js Missing Files</h2>
+          <p class="roselt-runtime-error-description">Rendering continued where possible so you can inspect the rest of the app.</p>
+        </div>
+        <button class="roselt-runtime-error-close" type="button" aria-label="Close Roselt.js error panel">\xD7</button>
+      </div>
+      <div class="roselt-runtime-error-content">
+        <ol class="roselt-runtime-error-list"></ol>
+      </div>
+    </div>
+  `;
+    panel.querySelector(".roselt-runtime-error-close")?.addEventListener("click", () => {
+      dismissed = true;
+      panel.hidden = true;
+      try {
+        unlockRoseltOverlayScroll(documentRef);
+      } catch (_) {
+      }
+    });
+    documentRef.body.append(panel);
+    return panel;
+  }
+  function renderPanel() {
+    if (typeof document === "undefined" || !document.body || !document.head) {
+      return;
+    }
+    ensureStyles(document);
+    const panel = ensurePanel(document);
+    const list = panel.querySelector(".roselt-runtime-error-list");
+    const heading = panel.querySelector(".roselt-runtime-error-title");
+    const description = panel.querySelector(".roselt-runtime-error-description");
+    const copy = createPanelCopy(errorEntries);
+    if (heading) {
+      heading.textContent = copy.heading;
+    }
+    if (description) {
+      description.textContent = copy.description;
+    }
+    if (list) {
+      list.innerHTML = errorEntries.map((entry) => createEntryMarkup(entry)).join("");
+    }
+    panel.hidden = dismissed || errorEntries.length === 0;
+    try {
+      if (!panel.hidden) {
+        lockRoseltOverlayScroll(document);
+      } else {
+        unlockRoseltOverlayScroll(document);
+      }
+    } catch (_) {
+    }
+  }
+  function lockRoseltOverlayScroll(documentRef = document) {
+    if (typeof documentRef === "undefined" || !documentRef.documentElement || !documentRef.body) {
+      return;
+    }
+    if (_overlayActive) {
+      return;
+    }
+    try {
+      _prevHtmlOverflow = documentRef.documentElement.style.overflow ?? "";
+      _prevBodyOverflow = documentRef.body.style.overflow ?? "";
+      documentRef.documentElement.style.overflow = "hidden";
+      documentRef.body.style.overflow = "hidden";
+      _overlayActive = true;
+    } catch (_) {
+    }
+  }
+  function unlockRoseltOverlayScroll(documentRef = document) {
+    if (typeof documentRef === "undefined" || !documentRef.documentElement || !documentRef.body) {
+      return;
+    }
+    if (!_overlayActive) {
+      return;
+    }
+    try {
+      documentRef.documentElement.style.overflow = _prevHtmlOverflow ?? "";
+      documentRef.body.style.overflow = _prevBodyOverflow ?? "";
+    } catch (_) {
+    }
+    _overlayActive = false;
+    _prevHtmlOverflow = null;
+    _prevBodyOverflow = null;
+  }
+  function reportRoseltResourceError(details) {
+    const normalized = normalizeDetails(details);
+    const key = createErrorKey(normalized);
+    ensureRoseltErrorStyles();
+    if (!errorKeys.has(key)) {
+      errorKeys.add(key);
+      errorEntries.push(normalized);
+      dismissed = false;
+      console.error(`[Roselt.js] ${normalized.message}`, normalized.cause || normalized);
+      void enrichErrorWithCodeFrame(normalized);
+    }
+    renderPanel();
+    return normalized;
+  }
+  function reportRoseltRuntimeError(error, details = {}) {
+    const cause = error instanceof Error ? error : new Error(String(error || "Unknown runtime error"));
+    const normalized = normalizeDetails({
+      kind: "runtime",
+      resourceType: "runtime error",
+      title: `${readErrorName(cause)}: ${readErrorMessage({ message: details.message, cause })}`,
+      message: details.description || "An uncaught runtime error happened while Roselt.js was running the current page.",
+      reference: details.reference || "",
+      requestedUrl: details.requestedUrl || details.filename || "",
+      source: details.source || window.location.href,
+      cause
+    });
+    const key = createErrorKey(normalized);
+    ensureRoseltErrorStyles();
+    if (!errorKeys.has(key)) {
+      errorKeys.add(key);
+      errorEntries.push(normalized);
+      dismissed = false;
+      console.error(`[Roselt.js] ${normalized.title}`, cause);
+      void enrichErrorWithCodeFrame(normalized);
+    }
+    renderPanel();
+    return normalized;
+  }
+  function createRoseltErrorMarkup(details, { variant = "inline" } = {}) {
+    const normalized = normalizeDetails(details);
+    const metadata = createMetadataRows(normalized).map(
+      ([label, value]) => `<div class="roselt-runtime-error-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
+    ).join("");
+    return `
+    <section class="roselt-runtime-error-placeholder" data-roselt-error-variant="${escapeHtml(variant)}">
+      ${variant === "page" ? '<button class="roselt-runtime-error-close" type="button" aria-label="Close error page">\xD7</button>' : ""}
+      <div class="roselt-runtime-error-page-shell">
+        <div class="roselt-runtime-error-badge">ERROR</div>
+        <h${variant === "page" ? "2" : "3"}>${escapeHtml(normalized.title)}</h${variant === "page" ? "2" : "3"}>
+        <p>${escapeHtml(normalized.message)}</p>
+        ${metadata ? `<dl>${metadata}</dl>` : ""}
+        ${renderCodeFrameMarkup(normalized.codeFrame)}
+        ${createStackMarkup(normalized)}
+      </div>
+    </section>
+  `;
+  }
+
   // src/components/component-registry.js
+  function escapeRegExp(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function createCodeFrame(source, lineNumber) {
+    const lines = String(source || "").split("\n");
+    if (!lineNumber || lineNumber < 1 || lineNumber > lines.length) {
+      return null;
+    }
+    const startLine = Math.max(1, lineNumber - 2);
+    const endLine = Math.min(lines.length, lineNumber + 2);
+    return {
+      startLine,
+      endLine,
+      highlightLine: lineNumber,
+      lines: lines.slice(startLine - 1, endLine).map((text, index) => ({
+        lineNumber: startLine + index,
+        text,
+        highlight: startLine + index === lineNumber
+      }))
+    };
+  }
+  function createSourceLocation(url, source, match) {
+    if (!match) {
+      return null;
+    }
+    const prefix = source.slice(0, match.index);
+    const line = prefix.split("\n").length;
+    const lastNewline = prefix.lastIndexOf("\n");
+    const column = match.index - lastNewline;
+    return {
+      url,
+      line,
+      column,
+      codeFrame: createCodeFrame(source, line)
+    };
+  }
+  function findComponentMatch(source, element, tagName) {
+    const exactMarkup = element?.outerHTML;
+    if (exactMarkup) {
+      const exactIndex = source.indexOf(exactMarkup);
+      if (exactIndex >= 0) {
+        return {
+          index: exactIndex,
+          text: exactMarkup
+        };
+      }
+    }
+    const tagPattern = new RegExp(
+      `<${escapeRegExp(tagName)}\\b[^>]*>(?:[\\s\\S]*?<\\/${escapeRegExp(tagName)}>)?`,
+      "i"
+    );
+    const match = tagPattern.exec(source);
+    if (match) {
+      return {
+        index: match.index,
+        text: match[0]
+      };
+    }
+    const selfClosingPattern = new RegExp(`<${escapeRegExp(tagName)}\\b[^>]*\\/>`, "i");
+    const selfClosingMatch = selfClosingPattern.exec(source);
+    if (!selfClosingMatch) {
+      return null;
+    }
+    return {
+      index: selfClosingMatch.index,
+      text: selfClosingMatch[0]
+    };
+  }
+  function resolveElementSourceUrl(element) {
+    const sectionHost = element?.closest?.("[data-roselt-section-source]");
+    if (sectionHost?.getAttribute) {
+      return sectionHost.getAttribute("data-roselt-section-source") || "";
+    }
+    const pageHost = element?.closest?.("[data-roselt-page-source]");
+    if (pageHost?.getAttribute) {
+      return pageHost.getAttribute("data-roselt-page-source") || "";
+    }
+    return document.baseURI;
+  }
   function isCustomElementConstructor(value) {
     return typeof value === "function" && value.prototype instanceof HTMLElement;
   }
@@ -151,6 +872,7 @@ ${source}
     constructor() {
       this.definitions = /* @__PURE__ */ new Map();
       this.inFlight = /* @__PURE__ */ new Map();
+      this.sourceCache = /* @__PURE__ */ new Map();
     }
     register(tagName, definition) {
       if (!tagName.includes("-")) {
@@ -167,27 +889,57 @@ ${source}
       }
     }
     async ensureForRoot(root, fallbackResolver) {
-      const tags = /* @__PURE__ */ new Set();
+      const tagElements = /* @__PURE__ */ new Map();
       if (root instanceof Element && root.localName.includes("-")) {
-        tags.add(root.localName);
+        tagElements.set(root.localName, root);
       }
       for (const element of root.querySelectorAll("*")) {
         if (element.localName.includes("-") && !customElements.get(element.localName)) {
-          tags.add(element.localName);
+          if (!tagElements.has(element.localName)) {
+            tagElements.set(element.localName, element);
+          }
         }
       }
-      await Promise.all(Array.from(tags, (tagName) => this.load(tagName, fallbackResolver)));
+      await Promise.all(
+        Array.from(
+          tagElements,
+          ([tagName, element]) => this.load(tagName, fallbackResolver, { element })
+        )
+      );
     }
-    async load(tagName, fallbackResolver) {
+    async load(tagName, fallbackResolver, context = {}) {
       if (customElements.get(tagName)) {
         return customElements.get(tagName);
       }
       if (!this.inFlight.has(tagName)) {
-        this.inFlight.set(tagName, this.resolveDefinition(tagName, fallbackResolver));
+        this.inFlight.set(tagName, this.resolveDefinition(tagName, fallbackResolver, context));
       }
       return this.inFlight.get(tagName);
     }
-    async resolveDefinition(tagName, fallbackResolver) {
+    async loadSource(url) {
+      if (!url) {
+        return null;
+      }
+      if (!this.sourceCache.has(url)) {
+        this.sourceCache.set(
+          url,
+          fetch(resolveBrowserLoadUrl(url)).then(async (response) => response.ok ? response.text() : null).catch(() => null)
+        );
+      }
+      return this.sourceCache.get(url);
+    }
+    async resolveElementLocation(tagName, element) {
+      const sourceUrl = resolveElementSourceUrl(element);
+      if (!sourceUrl) {
+        return null;
+      }
+      const source = await this.loadSource(sourceUrl);
+      if (!source) {
+        return null;
+      }
+      return createSourceLocation(sourceUrl, source, findComponentMatch(source, element, tagName));
+    }
+    async resolveDefinition(tagName, fallbackResolver, context = {}) {
       let definition = this.definitions.get(tagName);
       if (!definition && typeof fallbackResolver === "function") {
         definition = await fallbackResolver(tagName);
@@ -203,6 +955,24 @@ ${source}
         const scriptUrl = resolveUrl(definition);
         const loadedSource = await loadClassicScript(scriptUrl, { optional: true });
         if (loadedSource === null) {
+          const usageLocation = await this.resolveElementLocation(tagName, context.element);
+          reportRoseltResourceError({
+            kind: "component",
+            resourceType: "component file",
+            title: "Missing Component File",
+            message: "Roselt.js could not load a referenced component script, so the element remained unenhanced.",
+            reference: tagName,
+            requestedUrl: scriptUrl,
+            source: usageLocation?.url || resolveElementSourceUrl(context.element),
+            topFrame: usageLocation ? {
+              functionName: tagName,
+              url: usageLocation.url,
+              line: usageLocation.line,
+              column: usageLocation.column
+            } : null,
+            codeFrame: usageLocation?.codeFrame || null,
+            stack: usageLocation ? "" : void 0
+          });
           return null;
         }
         constructor = this.definitions.get(tagName);
@@ -743,6 +1513,14 @@ ${source}
           loadPageScript(url).then((definition) => normalizePageScript(definition)).catch((error) => {
             const message = String(error);
             if (message.includes("Failed to fetch dynamically imported module") || message.includes("Cannot find module") || message.includes("Importing a module script failed")) {
+              reportRoseltResourceError({
+                kind: "page",
+                resourceType: "page module",
+                title: "Missing Page Module",
+                message: "Roselt.js could not load a referenced page script, so only the HTML was rendered.",
+                requestedUrl: url,
+                cause: error
+              });
               return normalizePageScript(createEmptyPageScript());
             }
             throw error;
@@ -1021,7 +1799,7 @@ ${source}
         await this.renderPage(routeMatch, currentUrl);
       } catch (error) {
         if (this.loader.isMissingPageError(error)) {
-          await this.renderNotFound(currentUrl, routeMatch);
+          await this.renderMissingPage(routeMatch, currentUrl, error);
           return;
         }
         throw error;
@@ -1045,6 +1823,7 @@ ${source}
       );
       await this.cleanup();
       this.activeStyleElements = this.applyStyles(initialStylesheets, extractedPage.inlineStyles);
+      this.app.pageRoot.setAttribute("data-roselt-page-source", page.htmlUrl);
       this.app.pageRoot.innerHTML = extractedPage.html;
       this.components.registerAll(resolveDefinitions(routeMatch.route.components, document.baseURI));
       this.components.registerAll(resolveDefinitions(page.module.components, page.moduleUrl));
@@ -1108,6 +1887,7 @@ ${source}
         await this.pageCleanup();
       }
       this.pageCleanup = null;
+      this.app.pageRoot.removeAttribute("data-roselt-page-source");
       for (const styleElement of this.activeStyleElements) {
         styleElement.remove();
       }
@@ -1142,6 +1922,39 @@ ${source}
       this.app.pageRoot.replaceChildren(section);
       document.title = "Page Not Found";
     }
+    async renderMissingPage(routeMatch, currentUrl, error) {
+      await this.cleanup();
+      ensureRoseltErrorStyles();
+      console.error(
+        "[Roselt.js] Roselt.js could not load the requested page HTML, so a full-screen error page was rendered instead.",
+        error
+      );
+      const details = {
+        kind: "page",
+        resourceType: "page file",
+        title: "Missing Page File",
+        message: "Roselt.js could not load the requested page HTML, so a developer error page was rendered instead.",
+        reference: routeMatch.route?.name || routeMatch.route?.path || currentUrl.pathname,
+        requestedUrl: error?.pageUrl || routeMatch.route?.html || "",
+        source: currentUrl.href,
+        cause: error
+      };
+      this.app.pageRoot.innerHTML = createRoseltErrorMarkup(details, { variant: "page" });
+      try {
+        lockRoseltOverlayScroll(document);
+      } catch (_) {
+      }
+      const closeButton = this.app.pageRoot.querySelector(".roselt-runtime-error-close");
+      if (closeButton instanceof HTMLButtonElement) {
+        closeButton.addEventListener("click", () => {
+          try {
+            unlockRoseltOverlayScroll(document);
+          } catch (_) {
+          }
+          this.app.pageRoot.innerHTML = "";
+        });
+      }
+    }
   };
 
   // src/runtime/section-loader.js
@@ -1156,11 +1969,87 @@ ${source}
   function isShorthandSectionReference(value) {
     return Boolean(value) && !value.includes("/") && !value.includes(".") && !value.includes(":");
   }
+  function escapeRegExp2(value) {
+    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function createCodeFrame2(source, lineNumber) {
+    const lines = String(source || "").split("\n");
+    if (!lineNumber || lineNumber < 1 || lineNumber > lines.length) {
+      return null;
+    }
+    const startLine = Math.max(1, lineNumber - 2);
+    const endLine = Math.min(lines.length, lineNumber + 2);
+    return {
+      startLine,
+      endLine,
+      highlightLine: lineNumber,
+      lines: lines.slice(startLine - 1, endLine).map((text, index) => ({
+        lineNumber: startLine + index,
+        text,
+        highlight: startLine + index === lineNumber
+      }))
+    };
+  }
+  function findIncludeMatch(source, includeNode, src) {
+    const exactMarkup = includeNode?.outerHTML;
+    if (exactMarkup) {
+      const exactIndex = source.indexOf(exactMarkup);
+      if (exactIndex >= 0) {
+        return {
+          index: exactIndex,
+          text: exactMarkup
+        };
+      }
+    }
+    const sectionPattern = new RegExp(
+      `<roselt\\b[^>]*\\bsection\\s*=\\s*(["'])${escapeRegExp2(src)}\\1[^>]*>(?:\\s*<\\/roselt>)?`,
+      "i"
+    );
+    const match = sectionPattern.exec(source);
+    if (!match) {
+      return null;
+    }
+    return {
+      index: match.index,
+      text: match[0]
+    };
+  }
+  function createSourceLocation2(url, source, match) {
+    if (!match) {
+      return null;
+    }
+    const prefix = source.slice(0, match.index);
+    const line = prefix.split("\n").length;
+    const lastNewline = prefix.lastIndexOf("\n");
+    const column = match.index - lastNewline;
+    return {
+      url,
+      line,
+      column,
+      codeFrame: createCodeFrame2(source, line)
+    };
+  }
+  function createMissingSectionError(url, reference, cause) {
+    const error = new Error(`Failed to load section HTML: ${url}`);
+    error.code = "ROSELT_SECTION_NOT_FOUND";
+    error.sectionUrl = url;
+    error.sectionReference = reference;
+    error.cause = cause;
+    return error;
+  }
+  function isMissingSectionFetchError(error) {
+    if (error?.code === "ROSELT_SECTION_NOT_FOUND") {
+      return true;
+    }
+    const message = String(error);
+    return error instanceof TypeError || message.includes("Failed to fetch") || message.includes("NetworkError");
+  }
   var SectionLoader = class {
     constructor(options = {}) {
       const { sectionsDirectory = "sections" } = options;
       this.sectionsDirectory = sectionsDirectory;
       this.sectionCache = /* @__PURE__ */ new Map();
+      this.sourceCache = /* @__PURE__ */ new Map();
       this.stylesheetCache = /* @__PURE__ */ new Map();
       this.appliedStylesheets = /* @__PURE__ */ new Map();
     }
@@ -1182,12 +2071,57 @@ ${source}
           continue;
         }
         const sectionUrl = isShorthandSectionReference(src) ? resolveUrl(`${this.sectionsDirectory}/${src}.html`, document.baseURI) : resolveUrl(src, baseUrl);
-        const sectionHtml = await this.loadSection(sectionUrl);
-        const resolvedHtml = await this.resolveIncludes(sectionHtml, sectionUrl);
-        const replacement = document.createRange().createContextualFragment(resolvedHtml);
-        this.annotateSectionFragment(replacement, sectionUrl);
-        includeNode.replaceWith(replacement);
+        try {
+          const sectionHtml = await this.loadSection(sectionUrl, src);
+          const resolvedHtml = await this.resolveIncludes(sectionHtml, sectionUrl);
+          const replacement = document.createRange().createContextualFragment(resolvedHtml);
+          this.annotateSectionFragment(replacement, sectionUrl);
+          includeNode.replaceWith(replacement);
+        } catch (error) {
+          if (error?.code !== "ROSELT_SECTION_NOT_FOUND") {
+            throw error;
+          }
+          const includeLocation = await this.resolveIncludeLocation(baseUrl, includeNode, src);
+          const details = reportRoseltResourceError({
+            kind: "section",
+            resourceType: "section file",
+            title: "Missing Section File",
+            message: "Roselt.js could not load a referenced section, so a placeholder was rendered in its place.",
+            reference: src,
+            requestedUrl: sectionUrl,
+            source: includeLocation?.url || baseUrl,
+            topFrame: includeLocation ? {
+              functionName: "roselt[section]",
+              url: includeLocation.url,
+              line: includeLocation.line,
+              column: includeLocation.column
+            } : null,
+            codeFrame: includeLocation?.codeFrame || null,
+            stack: includeLocation ? "" : void 0,
+            cause: error
+          });
+          const replacement = document.createRange().createContextualFragment(
+            createRoseltErrorMarkup(details)
+          );
+          includeNode.replaceWith(replacement);
+        }
       }
+    }
+    async loadSource(url) {
+      if (!this.sourceCache.has(url)) {
+        this.sourceCache.set(
+          url,
+          fetch(resolveBrowserLoadUrl(url)).then(async (response) => response.ok ? response.text() : null).catch(() => null)
+        );
+      }
+      return this.sourceCache.get(url);
+    }
+    async resolveIncludeLocation(baseUrl, includeNode, src) {
+      const source = await this.loadSource(baseUrl);
+      if (!source) {
+        return null;
+      }
+      return createSourceLocation2(baseUrl, source, findIncludeMatch(source, includeNode, src));
     }
     annotateSectionFragment(fragment, sectionUrl) {
       for (const node of Array.from(fragment.childNodes)) {
@@ -1197,15 +2131,20 @@ ${source}
         node.setAttribute("data-roselt-section-source", sectionUrl);
       }
     }
-    loadSection(url) {
+    loadSection(url, reference = "") {
       if (!this.sectionCache.has(url)) {
         this.sectionCache.set(
           url,
           fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
             if (!response.ok) {
-              throw new Error(`Failed to load section HTML: ${url}`);
+              throw createMissingSectionError(url, reference);
             }
             return response.text();
+          }).catch((error) => {
+            if (isMissingSectionFetchError(error)) {
+              throw createMissingSectionError(url, reference, error);
+            }
+            throw error;
           })
         );
       }
@@ -1369,7 +2308,23 @@ ${source}
       this.renderer = new RenderEngine(this, this.loader, this.sections, this.components);
       this.router = new NavigationRouter(this);
       this.started = false;
+      this.handleWindowError = this.handleWindowError.bind(this);
+      this.handleUnhandledRejection = this.handleUnhandledRejection.bind(this);
       this.href = createHrefBuilder(this.routes, this.options);
+    }
+    handleWindowError(event) {
+      if (!event?.error) {
+        return;
+      }
+      reportRoseltRuntimeError(event.error, {
+        filename: event.filename,
+        description: event.message || "An uncaught runtime error happened while Roselt.js was running the current page."
+      });
+    }
+    handleUnhandledRejection(event) {
+      reportRoseltRuntimeError(event?.reason, {
+        description: "An unhandled promise rejection happened while Roselt.js was running the current page."
+      });
     }
     async ensureEntryAssets() {
       const stylesheetUrl = createEntryAssetUrl(".css");
@@ -1398,6 +2353,8 @@ ${source}
         );
         await this.sections.hydrateRoot(document.body);
         this.router.start();
+        window.addEventListener("error", this.handleWindowError);
+        window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
         setActiveRoseltApp(this);
         this.started = true;
         return this.router.bootstrap();
@@ -1405,6 +2362,8 @@ ${source}
     }
     stop() {
       this.router.stop();
+      window.removeEventListener("error", this.handleWindowError);
+      window.removeEventListener("unhandledrejection", this.handleUnhandledRejection);
       clearActiveRoseltApp(this);
       this.started = false;
     }

@@ -1,5 +1,6 @@
 import { resolveBrowserLoadUrl, resolveUrl } from "../utils/resolve-url.js";
 import { createEmptyPageScript, loadPageScript, normalizePageScript } from "./page-script.js";
+import { reportRoseltResourceError } from "./dev-error-overlay.js";
 
 function createMissingPageError(url, cause) {
   const error = new Error(`Failed to load page HTML: ${url}`);
@@ -89,17 +90,26 @@ export class PageLoader {
         loadPageScript(url)
           .then((definition) => normalizePageScript(definition))
           .catch((error) => {
-          const message = String(error);
+            const message = String(error);
 
-          if (
-            message.includes("Failed to fetch dynamically imported module") ||
-            message.includes("Cannot find module") ||
-            message.includes("Importing a module script failed")
-          ) {
-            return normalizePageScript(createEmptyPageScript());
-          }
+            if (
+              message.includes("Failed to fetch dynamically imported module") ||
+              message.includes("Cannot find module") ||
+              message.includes("Importing a module script failed")
+            ) {
+              reportRoseltResourceError({
+                kind: "page",
+                resourceType: "page module",
+                title: "Missing Page Module",
+                message: "Roselt.js could not load a referenced page script, so only the HTML was rendered.",
+                requestedUrl: url,
+                cause: error,
+              });
 
-          throw error;
+              return normalizePageScript(createEmptyPageScript());
+            }
+
+            throw error;
           }),
       );
     }
