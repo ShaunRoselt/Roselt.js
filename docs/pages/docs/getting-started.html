@@ -11,12 +11,12 @@
   <section class="doc-section">
     <h2>Fastest start: scaffold a project</h2>
     <p>The quickest way to get a working Roselt.js app is the official scaffold command.</p>
-<pre class="code-block"><code>npm create roselt-js@latest my-app
+<pre class="code-block"><code>npm create roselt@latest my-app
 cd my-app
 npm install
 npm start</code></pre>
   <p>The generated app includes an <code>index.html</code> entrypoint, a starter shell, a <code>home</code> route, a <code>404</code> route, and a start script powered by <code>roselt serve</code>.</p>
-  <p>If you already initialized a fresh repository, you can scaffold straight into its root with <code>npm create roselt-js@latest .</code>, then run <code>npm install</code> and <code>npm start</code>.</p>
+  <p>If you already initialized a fresh repository, you can scaffold straight into its root with <code>npm create roselt@latest .</code>, then run <code>npm install</code> and <code>npm start</code>.</p>
   </section>
 
   <section class="doc-section">
@@ -34,7 +34,7 @@ npm start</code></pre>
 
     &lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
     &lt;script&gt;
-      window.Roselt.start();
+      Roselt.start();
     &lt;/script&gt;
   &lt;/body&gt;
 &lt;/html&gt;</code></pre>
@@ -56,7 +56,7 @@ npm start</code></pre>
 &lt;/section&gt;</code></pre>
     <div class="callout">
       <strong>Browser global</strong>
-      <p>When you load the browser bundle from a CDN or a local file, Roselt.js now exposes <code>window.Roselt.start()</code> directly instead of nesting the API under another namespace.</p>
+      <p>When you load the browser bundle from a CDN or a local file, Roselt.js exposes a global <code>Roselt</code> object, so you can call <code>Roselt.start()</code> directly.</p>
     </div>
   </section>
 

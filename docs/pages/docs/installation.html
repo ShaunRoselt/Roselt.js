@@ -10,12 +10,12 @@
 
   <section class="doc-section">
     <h2>Option 1: scaffold a new app</h2>
-<pre class="code-block"><code>npm create roselt-js@latest my-app
+<pre class="code-block"><code>npm create roselt@latest my-app
 cd my-app
 npm install
 npm start</code></pre>
     <p>This is the recommended starting point if you want the official starter shell, route structure, and development script without setting them up by hand.</p>
-  <p>For a freshly created repository, you can also run <code>npm create roselt-js@latest .</code> from the repo root and keep the app at the top level.</p>
+  <p>For a freshly created repository, you can also run <code>npm create roselt@latest .</code> from the repo root and keep the app at the top level.</p>
   </section>
 
   <section class="doc-section">
@@ -26,10 +26,10 @@ npm start</code></pre>
 
   <section class="doc-section">
     <h2>Option 3: use the global bundle</h2>
-    <p>The quickest no-build path is a script tag that exposes <code>window.Roselt</code> directly.</p>
+    <p>The quickest no-build path is a script tag that exposes the global <code>Roselt</code> object directly.</p>
 <pre class="code-block"><code>&lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-  window.Roselt.start();
+  Roselt.start();
 &lt;/script&gt;</code></pre>
   </section>
 
@@ -75,7 +75,7 @@ npm run serve</code></pre>
     </div>
     <div class="callout">
       <strong>One browser bundle</strong>
-      <p>The browser-facing story is intentionally narrow: load <code>dist/roselt.js</code> or <code>dist/roselt.min.js</code>, then call <code>window.Roselt.start()</code>.</p>
+      <p>The browser-facing story is intentionally narrow: load <code>dist/roselt.js</code> or <code>dist/roselt.min.js</code>, then call <code>Roselt.start()</code>.</p>
     </div>
   </section>
 

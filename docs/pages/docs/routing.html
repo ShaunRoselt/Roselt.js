@@ -20,7 +20,7 @@
   <section class="doc-section">
     <h2>Switch to pathname routing</h2>
     <p>Set <code>routingMode: "pathname"</code> when you want clean paths and your host can serve the entry page for every route request.</p>
-<pre class="code-block"><code>window.Roselt.start({
+<pre class="code-block"><code>Roselt.start({
   routingMode: "pathname"
 });</code></pre>
     <p>In pathname mode, a page named <code>docs/getting-started</code> resolves to <code>/docs/getting-started</code>.</p>
@@ -29,7 +29,7 @@
   <section class="doc-section">
     <h2>Use explicit routes when filenames are not enough</h2>
     <p>Automatic routes are the default. Pass a <code>routes</code> array only when you need named routes, custom file locations, route metadata, or pathname parameters.</p>
-<pre class="code-block"><code>window.Roselt.start({
+<pre class="code-block"><code>Roselt.start({
   routingMode: "pathname",
   routes: [
     {

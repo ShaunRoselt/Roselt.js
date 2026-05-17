@@ -12,14 +12,14 @@ Learn more at [www.roseltjs.org](https://www.roseltjs.org/).
 
 Roselt.js is designed for gradual adoption, so you can start with the workflow that matches your project:
 
-- Scaffold a new app with `npm create roselt-js@latest my-app`
+- Scaffold a new app with `npm create roselt@latest my-app`
 - Install the package into an existing setup with `npm install roselt-js`
 - Use the prebuilt browser global from `dist/roselt.js`
 
 The recommended way to start a new project is:
 
 ```bash
-npm create roselt-js@latest my-app
+npm create roselt@latest my-app
 cd my-app
 npm install
 npm start
@@ -28,7 +28,7 @@ npm start
 If you already created or cloned a fresh repository, you can scaffold directly into that repo root:
 
 ```bash
-npm create roselt-js@latest .
+npm create roselt@latest .
 npm install
 npm start
 ```
@@ -38,7 +38,7 @@ That works when the directory only contains repo bootstrap files such as `.git`,
 If you want the CLI directly, this works too:
 
 ```bash
-npx roselt-js create my-app
+npx roselt create my-app
 ```
 
 Generated apps include a starter shell, a `home` route, a `404` route, and a local development server powered by `roselt serve`.
@@ -79,7 +79,7 @@ Here is the smallest Roselt.js app shape:
 
     <script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"></script>
     <script>
-      window.Roselt.start();
+      Roselt.start();
     </script>
   </body>
 </html>
@@ -142,8 +142,8 @@ The default start path requires a `roselt[page]` element marked with `navigate`.
 
 This repository includes working examples you can inspect directly:
 
-- `examples/starter-app/` is the official starter template used by `npm create roselt-js`
-- `packages/create-roselt-js/` contains the `npm create` entry point
+- `examples/starter-app/` is the official starter template used by `npm create roselt`
+- `packages/create-roselt/` contains the `npm create` entry point
 
 ## Contributing
 

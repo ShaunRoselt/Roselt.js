@@ -1,6 +1,6 @@
 {
   "name": "roselt-js",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Roselt.js is a vanilla JavaScript SPA framework built on the Navigation API.",
   "type": "module",
   "main": "./src/index.js",
@@ -18,6 +18,7 @@
     "bin",
     "dist",
     "examples/starter-app",
+    "packages/create-roselt",
     "src",
     "scripts",
     "README.md",
@@ -25,7 +26,7 @@
   ],
   "scripts": {
     "build": "node ./scripts/build.js",
-    "check": "node --check ./bin/roselt.js && node --check ./bin/roselt-js.js && node --check ./scripts/build.js && node --check ./scripts/cli-core.js && node --check ./scripts/cli.js && node --check ./scripts/dev-server.js && node --check ./packages/create-roselt-js/index.js",
+    "check": "node --check ./bin/roselt.js && node --check ./bin/roselt-js.js && node --check ./scripts/build.js && node --check ./scripts/cli-core.js && node --check ./scripts/cli.js && node --check ./scripts/dev-server.js && node --check ./packages/create-roselt-js/index.js && node --check ./packages/create-roselt/index.js",
     "create": "node ./scripts/cli.js create",
     "serve": "node ./scripts/dev-server.js",
     "serve:example": "node ./scripts/dev-server.js"

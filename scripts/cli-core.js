@@ -71,7 +71,7 @@ async function createAppFromArgs(args) {
   const targetArgument = args[0];
 
   if (!targetArgument || targetArgument.startsWith("-")) {
-    throw new Error("Usage: npm create roselt-js@latest <app-name>");
+    throw new Error("Usage: npm create roselt@latest <app-name>");
   }
 
   const targetDirectory = path.resolve(process.cwd(), targetArgument);
@@ -134,13 +134,13 @@ async function replaceInFile(filePath, searchValue, replacementValue) {
 
 function printRoseltHelp() {
   console.log(
-    "Roselt.js CLI\n\nUsage:\n  roselt create <path>\n  roselt serve [root] [--host 127.0.0.1] [--port 42069]\n\nExamples:\n  npm create roselt-js@latest my-app\n  npm create roselt-js@latest .\n  npx roselt-js create my-app\n  cd my-app && npm install && npm start",
+    "Roselt.js CLI\n\nUsage:\n  roselt create <path>\n  roselt serve [root] [--host 127.0.0.1] [--port 42069]\n\nExamples:\n  npm create roselt@latest my-app\n  npm create roselt@latest .\n  npx roselt create my-app\n  cd my-app && npm install && npm start",
   );
 }
 
 function printCreateHelp() {
   console.log(
-    "Create a Roselt.js app\n\nUsage:\n  npm create roselt-js@latest <path>\n\nExamples:\n  npm create roselt-js@latest my-app\n  npm create roselt-js@latest .",
+    "Create a Roselt.js app\n\nUsage:\n  npm create roselt@latest <path>\n\nExamples:\n  npm create roselt@latest my-app\n  npm create roselt@latest .",
   );
 }
 
