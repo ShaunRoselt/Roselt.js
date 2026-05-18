@@ -93,8 +93,8 @@ a {
 }
 
 .app-body {
-	width: min(100% - 2rem, 72rem);
-	margin: 1.25rem auto 0;
+	width: 100%;
+	margin: 0;
 	display: grid;
 	grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
 	gap: 1.25rem;
@@ -226,7 +226,7 @@ code {
 @media (max-width: 640px) {
   .app-body {
 		width: calc(100% - 1rem);
-		margin-top: 0.75rem;
+		margin-top: 0;
 		grid-template-columns: 1fr;
 	}
 
