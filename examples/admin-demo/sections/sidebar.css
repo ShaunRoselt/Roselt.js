@@ -1,9 +1,9 @@
 .admin-sidebar {
 	position: sticky;
-	top: var(--admin-header-height, 72px);
+	top: calc(var(--admin-header-height, 72px) - 1px);
 	margin: 0;
 	padding: 1rem;
-	height: calc(100vh - var(--admin-header-height, 72px));
+	height: calc(100vh - var(--admin-header-height, 72px) + 1px);
 	overflow: auto;
 	border: 1px solid var(--surface-border);
 	border-top: 0;
