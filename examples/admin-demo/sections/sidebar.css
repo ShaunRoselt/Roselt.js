@@ -6,6 +6,7 @@
 	height: calc(100vh - var(--admin-header-height, 72px));
 	overflow: auto;
 	border: 1px solid var(--surface-border);
+	border-top: 0;
 	border-radius: 0;
 	background: linear-gradient(180deg, var(--surface), var(--surface-strong));
 	backdrop-filter: blur(18px);
