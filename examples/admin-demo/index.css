@@ -103,7 +103,7 @@ a {
 
 .app-main {
   min-width: 0;
-  padding: 0 0 4rem;
+  padding: 1.25rem 1.25rem 4rem 0;
 }
 
 .site-header,
