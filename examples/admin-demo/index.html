@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Admin Demo</title>
+		<meta
+			name="description"
+			content="An admin dashboard demo built with Roselt.js."
+		>
+		<link rel="stylesheet" href="./index.css">
+		<link rel="stylesheet" href="./admin-header.css">
+	</head>
+	<body>
+		<div class="app-shell">
+			<roselt section="header"></roselt>
+
+			<div class="app-body">
+				<roselt section="sidebar"></roselt>
+
+				<main class="app-main">
+					<roselt page="home" navigate></roselt>
+				</main>
+			</div>
+		</div>
+
+		<script src="../../dist/roselt.js"></script>
+		<script>
+			Roselt.start();
+		</script>
+	</body>
+</html>
