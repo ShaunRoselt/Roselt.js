@@ -1,6 +1,8 @@
 const ADMIN_THEME_STORAGE_KEY = "roselt-admin-demo-theme";
 const ADMIN_THEMES = ["dark", "light", "blue"];
 const ADMIN_DEFAULT_THEME = "blue";
+const ADMIN_AUTH_PAGES = new Set(["login", "register", "forgot-password"]);
+const ADMIN_AUTH_STORAGE_KEY = "adminDemoLoggedIn";
 
 (function initAdminDemoTheme() {
 	const root = document.documentElement;
@@ -54,3 +56,79 @@ const ADMIN_DEFAULT_THEME = "blue";
 		},
 	};
 })();
+
+function getAdminPageId(url = window.location.href) {
+	try {
+		const resolvedUrl = url instanceof URL ? url : new URL(url, window.location.href);
+		return (resolvedUrl.searchParams.get("page") || "home").trim() || "home";
+	} catch (error) {
+		return "home";
+	}
+}
+
+function isAuthPage(pageId) {
+	return ADMIN_AUTH_PAGES.has(pageId);
+}
+
+function applyAdminLayout(pageId) {
+	if (!document.body) return;
+	document.body.dataset.adminLayout = isAuthPage(pageId) ? "auth" : "app";
+}
+
+window.AdminDemoAuth = {
+	isLoggedIn() {
+		try {
+			return window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === "1";
+		} catch (error) {
+			return false;
+		}
+	},
+	setLoggedIn(isLoggedIn) {
+		try {
+			if (isLoggedIn) {
+				window.localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, "1");
+				return;
+			}
+			window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
+		} catch (error) {
+			// Ignore storage failures in file-based examples.
+		}
+	},
+	logOut() {
+		this.setLoggedIn(false);
+	},
+};
+
+function syncAdminRouteState(url = window.location.href) {
+	const pageId = getAdminPageId(url);
+
+	if (!window.AdminDemoAuth.isLoggedIn() && !isAuthPage(pageId)) {
+		window.history.replaceState({}, "", "?page=login");
+		applyAdminLayout("login");
+		return "login";
+	}
+
+	applyAdminLayout(pageId);
+	return pageId;
+}
+
+syncAdminRouteState();
+
+if ("navigation" in window && typeof window.navigation.addEventListener === "function") {
+	window.navigation.addEventListener("navigate", (event) => {
+		applyAdminLayout(getAdminPageId(event.destination?.url || window.location.href));
+	});
+}
+
+// Log-out handler - clear auth state and navigate to log in
+document.addEventListener('click', function (e) {
+	try {
+		var el = e && e.target && e.target.closest && e.target.closest('#logout-link');
+		if (!el) return;
+	} catch (err) {
+		return;
+	}
+	e.preventDefault && e.preventDefault();
+	window.AdminDemoAuth.logOut();
+	window.location.href = '?page=login';
+});
