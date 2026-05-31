@@ -82,6 +82,7 @@
   // src/runtime/classic-script-loader.js
   var sourceCache = /* @__PURE__ */ new Map();
   var executionCache = /* @__PURE__ */ new Map();
+  var executionUrlStack = [];
   function isMissingScriptError(error) {
     const message = String(error);
     return error instanceof TypeError || message.includes("Failed to fetch") || message.includes("NetworkError");
@@ -117,8 +118,16 @@
 ${source}
 }).call(globalThis);
 //# sourceURL=${url}`;
-    document.head.append(script);
-    script.remove();
+    executionUrlStack.push(url);
+    try {
+      document.head.append(script);
+    } finally {
+      script.remove();
+      executionUrlStack.pop();
+    }
+  }
+  function getActiveClassicScriptUrl() {
+    return executionUrlStack[executionUrlStack.length - 1] || "";
   }
   async function loadClassicScript(url, { optional = false } = {}) {
     const cacheKey = `${optional ? "optional" : "required"}:${url}`;
@@ -743,14 +752,18 @@ ${source}
   }
   function reportRoseltRuntimeError(error, details = {}) {
     const cause = error instanceof Error ? error : new Error(String(error || "Unknown runtime error"));
+    const runtimeDetails = cause?.roseltRuntimeDetails || {};
     const normalized = normalizeDetails({
       kind: "runtime",
       resourceType: "runtime error",
       title: `${readErrorName(cause)}: ${readErrorMessage({ message: details.message, cause })}`,
       message: details.description || "An uncaught runtime error happened while Roselt.js was running the current page.",
-      reference: details.reference || "",
-      requestedUrl: details.requestedUrl || details.filename || "",
-      source: details.source || window.location.href,
+      reference: details.reference || runtimeDetails.reference || "",
+      requestedUrl: details.requestedUrl || runtimeDetails.requestedUrl || details.filename || "",
+      source: details.source || runtimeDetails.source || window.location.href,
+      topFrame: details.topFrame || runtimeDetails.topFrame || null,
+      codeFrame: details.codeFrame || runtimeDetails.codeFrame || null,
+      stack: details.stack || runtimeDetails.stack,
       cause
     });
     const key = createErrorKey(normalized);
@@ -822,6 +835,25 @@ ${source}
       codeFrame: createCodeFrame(source, line)
     };
   }
+  function createInvalidComponentRegistrationError(tagName, usageLocation, source) {
+    const error = new Error(
+      `Component ${tagName} must register itself by calling Roselt.defineComponent(definition) from its component file.`
+    );
+    error.name = "ComponentRegistrationError";
+    error.roseltRuntimeDetails = {
+      source: usageLocation?.url || source || document.baseURI,
+      reference: tagName,
+      topFrame: usageLocation ? {
+        functionName: tagName,
+        url: usageLocation.url,
+        line: usageLocation.line,
+        column: usageLocation.column
+      } : null,
+      codeFrame: usageLocation?.codeFrame || null,
+      stack: usageLocation ? "" : void 0
+    };
+    return error;
+  }
   function findComponentMatch(source, element, tagName) {
     const exactMarkup = element?.outerHTML;
     if (exactMarkup) {
@@ -855,10 +887,6 @@ ${source}
     };
   }
   function resolveElementSourceUrl(element) {
-    const sectionHost = element?.closest?.("[data-roselt-section-source]");
-    if (sectionHost?.getAttribute) {
-      return sectionHost.getAttribute("data-roselt-section-source") || "";
-    }
     const pageHost = element?.closest?.("[data-roselt-page-source]");
     if (pageHost?.getAttribute) {
       return pageHost.getAttribute("data-roselt-page-source") || "";
@@ -867,6 +895,253 @@ ${source}
   }
   function isCustomElementConstructor(value) {
     return typeof value === "function" && value.prototype instanceof HTMLElement;
+  }
+  function isPlainObject(value) {
+    return Object.prototype.toString.call(value) === "[object Object]";
+  }
+  function createLightweightComponentClassName(tagName) {
+    const parts = String(tagName).split(/[^a-zA-Z0-9]+/).filter(Boolean).map((part) => part.charAt(0).toUpperCase() + part.slice(1));
+    return `${parts.join("") || "Roselt"}Component`;
+  }
+  function inferComponentTagNameFromFile() {
+    const scriptUrl = getActiveClassicScriptUrl();
+    if (!scriptUrl) {
+      throw new Error(
+        "Roselt.defineComponent(definition) must run while a component file is executing so Roselt can infer the component name from the filename."
+      );
+    }
+    const url = new URL(scriptUrl, document.baseURI);
+    const fileName = decodeURIComponent(url.pathname.split("/").pop() || "");
+    if (!fileName.endsWith(".js")) {
+      throw new Error(
+        `Roselt.defineComponent(definition) could not infer a component name from ${scriptUrl}. Component files must end in .js.`
+      );
+    }
+    const tagName = fileName.replace(/\.js$/, "");
+    if (!tagName.includes("-")) {
+      throw new Error(
+        `Roselt.defineComponent(definition) inferred ${tagName} from ${fileName}, but component filenames must include a hyphen.`
+      );
+    }
+    return tagName;
+  }
+  var LIGHTWEIGHT_COMPONENT_STATE = /* @__PURE__ */ Symbol("roseltLightweightComponentState");
+  function getLightweightState(element) {
+    if (!element[LIGHTWEIGHT_COMPONENT_STATE]) {
+      Object.defineProperty(element, LIGHTWEIGHT_COMPONENT_STATE, {
+        value: {
+          bindings: [],
+          initialized: false
+        }
+      });
+    }
+    return element[LIGHTWEIGHT_COMPONENT_STATE];
+  }
+  function getLightweightRenderRoot(element) {
+    return element.shadow === false ? element : element.shadowRoot;
+  }
+  function attachLightweightBinding(element, binding) {
+    const root = getLightweightRenderRoot(element);
+    if (!root || binding.listener) {
+      return;
+    }
+    binding.listener = (event) => {
+      if (!binding.selector) {
+        binding.handler.call(element, event, event.target, element);
+        return;
+      }
+      if (!(event.target instanceof Element)) {
+        return;
+      }
+      const match = event.target.closest(binding.selector);
+      if (!match || !root.contains(match)) {
+        return;
+      }
+      binding.handler.call(element, event, match, element);
+    };
+    root.addEventListener(binding.type, binding.listener, binding.options);
+  }
+  function renderLightweightComponent(element) {
+    const root = getLightweightRenderRoot(element);
+    if (!root) {
+      return null;
+    }
+    const output = typeof element.render === "function" ? element.render.call(element, element) : element.render;
+    root.innerHTML = output == null ? "" : String(output);
+    return root;
+  }
+  function bindLightweightValue(element, key, value) {
+    element[key] = typeof value === "function" ? value.bind(element) : value;
+  }
+  var LIGHTWEIGHT_RESERVED_KEYS = /* @__PURE__ */ new Set([
+    "attributeChanged",
+    "autoRender",
+    "connected",
+    "disconnected",
+    "observedAttributes",
+    "render",
+    "setup",
+    "shadow"
+  ]);
+  function ensureLightweightHelpers(element) {
+    const state = getLightweightState(element);
+    if (!Object.hasOwn(element, "on")) {
+      Object.defineProperty(element, "on", {
+        value(type, selector, handler, options) {
+          const binding = typeof selector === "function" ? { type, selector: null, handler: selector, options: handler } : { type, selector, handler, options };
+          state.bindings.push(binding);
+          attachLightweightBinding(element, binding);
+          return binding;
+        },
+        configurable: true
+      });
+    }
+    if (!Object.hasOwn(element, "emit")) {
+      Object.defineProperty(element, "emit", {
+        value(type, detail, options = {}) {
+          const event = new CustomEvent(type, {
+            detail,
+            bubbles: true,
+            composed: true,
+            ...options
+          });
+          element.dispatchEvent(event);
+          return event;
+        },
+        configurable: true
+      });
+    }
+    if (!Object.hasOwn(element, "requestRender")) {
+      Object.defineProperty(element, "requestRender", {
+        value() {
+          return renderLightweightComponent(element);
+        },
+        configurable: true
+      });
+    }
+    if (!Object.hasOwn(element, "root")) {
+      Object.defineProperty(element, "root", {
+        get() {
+          return getLightweightRenderRoot(element);
+        },
+        configurable: true
+      });
+    }
+  }
+  function applyLightweightDefinition(element, definition) {
+    if (typeof definition === "function") {
+      definition.call(element, element);
+      return;
+    }
+    if (!isPlainObject(definition)) {
+      return;
+    }
+    for (const [key, value] of Object.entries(definition)) {
+      if (!LIGHTWEIGHT_RESERVED_KEYS.has(key)) {
+        bindLightweightValue(element, key, value);
+      }
+    }
+    if (Object.hasOwn(definition, "shadow")) {
+      element.shadow = definition.shadow !== false;
+    }
+    if (Object.hasOwn(definition, "render")) {
+      element.render = definition.render;
+    }
+    if (Object.hasOwn(definition, "connected")) {
+      element.connected = definition.connected;
+    }
+    if (Object.hasOwn(definition, "disconnected")) {
+      element.disconnected = definition.disconnected;
+    }
+    if (Object.hasOwn(definition, "attributeChanged")) {
+      element.attributeChanged = definition.attributeChanged;
+    }
+    if (Object.hasOwn(definition, "autoRender")) {
+      element.autoRender = definition.autoRender !== false;
+    }
+    if (typeof definition.setup === "function") {
+      definition.setup.call(element, element);
+    }
+  }
+  function initializeLightweightComponent(element, definition) {
+    const state = getLightweightState(element);
+    if (state.initialized) {
+      return element;
+    }
+    ensureLightweightHelpers(element);
+    element.shadow = element.shadow !== false;
+    element.render = element.render || "";
+    element.connected = element.connected || null;
+    element.disconnected = element.disconnected || null;
+    element.attributeChanged = element.attributeChanged || null;
+    element.autoRender = element.autoRender !== false;
+    applyLightweightDefinition(element, definition);
+    if (element.shadow !== false && !element.shadowRoot) {
+      element.attachShadow({ mode: "open" });
+    }
+    for (const binding of state.bindings) {
+      attachLightweightBinding(element, binding);
+    }
+    state.initialized = true;
+    return element;
+  }
+  function createLightweightComponentClass(tagName, definition) {
+    const observedAttributes = Array.isArray(definition?.observedAttributes) ? definition.observedAttributes.map((value) => String(value)) : [];
+    const LightweightComponent = class extends HTMLElement {
+      static observedAttributes = observedAttributes;
+      constructor() {
+        super();
+        getLightweightState(this);
+        ensureLightweightHelpers(this);
+      }
+      connectedCallback() {
+        const element = initializeLightweightComponent(this, definition);
+        renderLightweightComponent(element);
+        if (typeof element.connected === "function") {
+          element.connected.call(element, this);
+        }
+      }
+      disconnectedCallback() {
+        const element = initializeLightweightComponent(this, definition);
+        if (typeof element.disconnected === "function") {
+          element.disconnected.call(element, this);
+        }
+      }
+      attributeChangedCallback(name, oldValue, newValue) {
+        const element = initializeLightweightComponent(this, definition);
+        if (typeof element.attributeChanged === "function") {
+          element.attributeChanged.call(element, name, oldValue, newValue, this);
+        }
+        if (oldValue !== newValue && element.autoRender !== false) {
+          renderLightweightComponent(element);
+        }
+      }
+    };
+    Object.defineProperty(LightweightComponent, "name", {
+      value: createLightweightComponentClassName(tagName)
+    });
+    return LightweightComponent;
+  }
+  function normalizeDefinedComponent(tagName, definition) {
+    if (typeof definition === "function" || isPlainObject(definition)) {
+      return createLightweightComponentClass(tagName, definition);
+    }
+    throw new Error(
+      `Roselt.defineComponent(${tagName}) only accepts a lightweight definition function or object.`
+    );
+  }
+  function normalizeDefineComponentArguments(tagNameOrDefinition, maybeDefinition) {
+    if (typeof tagNameOrDefinition === "string") {
+      return {
+        tagName: tagNameOrDefinition,
+        definition: normalizeDefinedComponent(tagNameOrDefinition, maybeDefinition)
+      };
+    }
+    const tagName = inferComponentTagNameFromFile();
+    return {
+      tagName,
+      definition: normalizeDefinedComponent(tagName, tagNameOrDefinition)
+    };
   }
   var ComponentRegistry = class {
     constructor() {
@@ -979,17 +1254,13 @@ ${source}
         if (!isCustomElementConstructor(constructor)) {
           constructor = customElements.get(tagName) ?? constructor;
         }
-      } else if (!isCustomElementConstructor(definition) && typeof definition === "function") {
-        const resolved = await definition();
-        if (typeof resolved === "string") {
-          this.definitions.set(tagName, resolved);
-          return this.resolveDefinition(tagName, fallbackResolver);
-        }
-        constructor = resolved?.default ?? resolved;
       }
       if (!isCustomElementConstructor(constructor)) {
-        throw new Error(
-          `Component ${tagName} must register itself with Roselt.defineComponent(...) or customElements.define(...).`
+        const usageLocation = await this.resolveElementLocation(tagName, context.element);
+        throw createInvalidComponentRegistrationError(
+          tagName,
+          usageLocation,
+          resolveElementSourceUrl(context.element)
         );
       }
       if (!customElements.get(tagName)) {
@@ -999,11 +1270,13 @@ ${source}
     }
   };
   var globalComponentRegistry = new ComponentRegistry();
-  function defineComponent(tagName, constructor) {
-    globalComponentRegistry.register(tagName, constructor);
-  }
-  function lazyComponent(tagName, loader) {
-    globalComponentRegistry.register(tagName, loader);
+  function defineComponent(tagNameOrDefinition, maybeDefinition) {
+    const { tagName, definition } = normalizeDefineComponentArguments(
+      tagNameOrDefinition,
+      maybeDefinition
+    );
+    globalComponentRegistry.register(tagName, definition);
+    return definition;
   }
 
   // src/router/navigation-router.js
@@ -1215,7 +1488,6 @@ ${source}
       exports: {},
       meta: {},
       stylesheets: [],
-      components: {},
       load: null,
       promise: null
     };
@@ -1298,14 +1570,6 @@ ${source}
           set Stylesheets(value) {
             withActiveDefinition((definition) => {
               definition.stylesheets = normalizeArray(value);
-            });
-          },
-          get Components() {
-            return activeDefinition?.components ?? {};
-          },
-          set Components(value) {
-            withActiveDefinition((definition) => {
-              definition.components = value || {};
             });
           },
           get Load() {
@@ -1447,9 +1711,6 @@ ${source}
         ...definition?.meta || {}
       },
       stylesheets: [...definition?.stylesheets || []],
-      components: {
-        ...definition?.components || {}
-      },
       load: definition?.load ?? null
     };
   }
@@ -1634,14 +1895,6 @@ ${source}
       return true;
     });
   }
-  function resolveDefinitions(definitions2 = {}, baseUrl = document.baseURI) {
-    return Object.fromEntries(
-      Object.entries(definitions2).map(([tagName, definition]) => [
-        tagName,
-        typeof definition === "string" ? resolveUrl(definition, baseUrl) : definition
-      ])
-    );
-  }
   function createSiblingStylesheetUrl(htmlUrl) {
     const url = new URL(htmlUrl);
     if (!url.pathname.endsWith(".html")) {
@@ -1782,10 +2035,9 @@ ${source}
     return route?.name === NOT_FOUND_PAGE_ID || route?.query === NOT_FOUND_PAGE_ID;
   }
   var RenderEngine = class {
-    constructor(app, loader, sections, components) {
+    constructor(app, loader, components) {
       this.app = app;
       this.loader = loader;
-      this.sections = sections;
       this.components = components;
       this.pageCleanup = null;
       this.activeStyleElements = [];
@@ -1808,8 +2060,7 @@ ${source}
     async renderPage(routeMatch, currentUrl) {
       const page = await this.loader.load(routeMatch.route);
       const pageUsesInlineStyles = extractInlineStyles(page.html).inlineStyles.length > 0;
-      const resolvedHtml = await this.sections.resolveIncludes(page.html, page.htmlUrl);
-      const extractedPage = extractInlineStyles(resolvedHtml);
+      const extractedPage = extractInlineStyles(page.html);
       const cleanupManager = createPageCleanupManager();
       const pageContext = createPageContext(this.app, routeMatch, currentUrl, cleanupManager);
       const initialStylesheets = await Promise.all(
@@ -1825,13 +2076,10 @@ ${source}
       this.activeStyleElements = this.applyStyles(initialStylesheets, extractedPage.inlineStyles);
       this.app.pageRoot.setAttribute("data-roselt-page-source", page.htmlUrl);
       this.app.pageRoot.innerHTML = extractedPage.html;
-      this.components.registerAll(resolveDefinitions(routeMatch.route.components, document.baseURI));
-      this.components.registerAll(resolveDefinitions(page.module.components, page.moduleUrl));
       await this.components.ensureForRoot(
         this.app.pageRoot,
         (tagName) => this.app.resolveComponent(tagName)
       );
-      await this.sections.hydrateRoot(this.app.pageRoot);
       setActivePageContext(pageContext);
       const loadFunction = page.module.load;
       let runtimeMeta = {};
@@ -1957,273 +2205,6 @@ ${source}
     }
   };
 
-  // src/runtime/section-loader.js
-  function createSiblingResourceUrl(sectionUrl, extension) {
-    const url = new URL(sectionUrl);
-    if (!url.pathname.endsWith(".html")) {
-      return null;
-    }
-    url.pathname = url.pathname.replace(/\.html$/, extension);
-    return url.href;
-  }
-  function isShorthandSectionReference(value) {
-    return Boolean(value) && !value.includes("/") && !value.includes(".") && !value.includes(":");
-  }
-  function escapeRegExp2(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-  function createCodeFrame2(source, lineNumber) {
-    const lines = String(source || "").split("\n");
-    if (!lineNumber || lineNumber < 1 || lineNumber > lines.length) {
-      return null;
-    }
-    const startLine = Math.max(1, lineNumber - 2);
-    const endLine = Math.min(lines.length, lineNumber + 2);
-    return {
-      startLine,
-      endLine,
-      highlightLine: lineNumber,
-      lines: lines.slice(startLine - 1, endLine).map((text, index) => ({
-        lineNumber: startLine + index,
-        text,
-        highlight: startLine + index === lineNumber
-      }))
-    };
-  }
-  function findIncludeMatch(source, includeNode, src) {
-    const exactMarkup = includeNode?.outerHTML;
-    if (exactMarkup) {
-      const exactIndex = source.indexOf(exactMarkup);
-      if (exactIndex >= 0) {
-        return {
-          index: exactIndex,
-          text: exactMarkup
-        };
-      }
-    }
-    const sectionPattern = new RegExp(
-      `<roselt\\b[^>]*\\bsection\\s*=\\s*(["'])${escapeRegExp2(src)}\\1[^>]*>(?:\\s*<\\/roselt>)?`,
-      "i"
-    );
-    const match = sectionPattern.exec(source);
-    if (!match) {
-      return null;
-    }
-    return {
-      index: match.index,
-      text: match[0]
-    };
-  }
-  function createSourceLocation2(url, source, match) {
-    if (!match) {
-      return null;
-    }
-    const prefix = source.slice(0, match.index);
-    const line = prefix.split("\n").length;
-    const lastNewline = prefix.lastIndexOf("\n");
-    const column = match.index - lastNewline;
-    return {
-      url,
-      line,
-      column,
-      codeFrame: createCodeFrame2(source, line)
-    };
-  }
-  function createMissingSectionError(url, reference, cause) {
-    const error = new Error(`Failed to load section HTML: ${url}`);
-    error.code = "ROSELT_SECTION_NOT_FOUND";
-    error.sectionUrl = url;
-    error.sectionReference = reference;
-    error.cause = cause;
-    return error;
-  }
-  function isMissingSectionFetchError(error) {
-    if (error?.code === "ROSELT_SECTION_NOT_FOUND") {
-      return true;
-    }
-    const message = String(error);
-    return error instanceof TypeError || message.includes("Failed to fetch") || message.includes("NetworkError");
-  }
-  var SectionLoader = class {
-    constructor(options = {}) {
-      const { sectionsDirectory = "sections" } = options;
-      this.sectionsDirectory = sectionsDirectory;
-      this.sectionCache = /* @__PURE__ */ new Map();
-      this.sourceCache = /* @__PURE__ */ new Map();
-      this.stylesheetCache = /* @__PURE__ */ new Map();
-      this.appliedStylesheets = /* @__PURE__ */ new Map();
-    }
-    async resolveRootIncludes(root, baseUrl = document.baseURI) {
-      await this.processTemplate(root, baseUrl);
-    }
-    async resolveIncludes(html, baseUrl) {
-      const template = document.createElement("template");
-      template.innerHTML = html;
-      await this.processTemplate(template.content, baseUrl);
-      return template.innerHTML;
-    }
-    async processTemplate(root, baseUrl) {
-      const includes = Array.from(root.querySelectorAll("roselt[section]"));
-      for (const includeNode of includes) {
-        const src = includeNode.getAttribute("section");
-        if (!src) {
-          includeNode.remove();
-          continue;
-        }
-        const sectionUrl = isShorthandSectionReference(src) ? resolveUrl(`${this.sectionsDirectory}/${src}.html`, document.baseURI) : resolveUrl(src, baseUrl);
-        try {
-          const sectionHtml = await this.loadSection(sectionUrl, src);
-          const resolvedHtml = await this.resolveIncludes(sectionHtml, sectionUrl);
-          const replacement = document.createRange().createContextualFragment(resolvedHtml);
-          this.annotateSectionFragment(replacement, sectionUrl);
-          includeNode.replaceWith(replacement);
-        } catch (error) {
-          if (error?.code !== "ROSELT_SECTION_NOT_FOUND") {
-            throw error;
-          }
-          const includeLocation = await this.resolveIncludeLocation(baseUrl, includeNode, src);
-          const details = reportRoseltResourceError({
-            kind: "section",
-            resourceType: "section file",
-            title: "Missing Section File",
-            message: "Roselt.js could not load a referenced section, so a placeholder was rendered in its place.",
-            reference: src,
-            requestedUrl: sectionUrl,
-            source: includeLocation?.url || baseUrl,
-            topFrame: includeLocation ? {
-              functionName: "roselt[section]",
-              url: includeLocation.url,
-              line: includeLocation.line,
-              column: includeLocation.column
-            } : null,
-            codeFrame: includeLocation?.codeFrame || null,
-            stack: includeLocation ? "" : void 0,
-            cause: error
-          });
-          const replacement = document.createRange().createContextualFragment(
-            createRoseltErrorMarkup(details)
-          );
-          includeNode.replaceWith(replacement);
-        }
-      }
-    }
-    async loadSource(url) {
-      if (!this.sourceCache.has(url)) {
-        this.sourceCache.set(
-          url,
-          fetch(resolveBrowserLoadUrl(url)).then(async (response) => response.ok ? response.text() : null).catch(() => null)
-        );
-      }
-      return this.sourceCache.get(url);
-    }
-    async resolveIncludeLocation(baseUrl, includeNode, src) {
-      const source = await this.loadSource(baseUrl);
-      if (!source) {
-        return null;
-      }
-      return createSourceLocation2(baseUrl, source, findIncludeMatch(source, includeNode, src));
-    }
-    annotateSectionFragment(fragment, sectionUrl) {
-      for (const node of Array.from(fragment.childNodes)) {
-        if (!(node instanceof Element)) {
-          continue;
-        }
-        node.setAttribute("data-roselt-section-source", sectionUrl);
-      }
-    }
-    loadSection(url, reference = "") {
-      if (!this.sectionCache.has(url)) {
-        this.sectionCache.set(
-          url,
-          fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
-            if (!response.ok) {
-              throw createMissingSectionError(url, reference);
-            }
-            return response.text();
-          }).catch((error) => {
-            if (isMissingSectionFetchError(error)) {
-              throw createMissingSectionError(url, reference, error);
-            }
-            throw error;
-          })
-        );
-      }
-      return this.sectionCache.get(url);
-    }
-    loadStylesheet(url, { optional = false } = {}) {
-      const cacheKey = `${optional ? "optional" : "required"}:${url}`;
-      if (!this.stylesheetCache.has(cacheKey)) {
-        this.stylesheetCache.set(
-          cacheKey,
-          fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
-            if (!response.ok) {
-              if (optional) {
-                return null;
-              }
-              throw new Error(`Failed to load stylesheet: ${url}`);
-            }
-            return {
-              href: url,
-              cssText: await response.text()
-            };
-          }).catch((error) => {
-            if (optional) {
-              const message = String(error);
-              if (error instanceof TypeError || message.includes("Failed to fetch") || message.includes("NetworkError")) {
-                return null;
-              }
-            }
-            throw error;
-          })
-        );
-      }
-      return this.stylesheetCache.get(cacheKey);
-    }
-    async ensureSectionAssets(sectionUrl) {
-      const stylesheetUrl = createSiblingResourceUrl(sectionUrl, ".css");
-      const scriptUrl = createSiblingResourceUrl(sectionUrl, ".js");
-      if (stylesheetUrl) {
-        await this.ensureSectionStylesheet(stylesheetUrl);
-      }
-      if (scriptUrl) {
-        await loadClassicScript(scriptUrl, { optional: true });
-      }
-    }
-    async ensureSectionStylesheet(url) {
-      if (this.appliedStylesheets.has(url)) {
-        return this.appliedStylesheets.get(url);
-      }
-      const promise = (async () => {
-        const stylesheet = await this.loadStylesheet(url, { optional: true });
-        if (!stylesheet?.cssText) {
-          return null;
-        }
-        const style = document.createElement("style");
-        style.textContent = stylesheet.cssText;
-        style.setAttribute("data-roselt-section-style", "true");
-        style.setAttribute("data-roselt-source", stylesheet.href);
-        document.head.append(style);
-        return style;
-      })();
-      this.appliedStylesheets.set(url, promise);
-      return promise;
-    }
-    async hydrateRoot(root) {
-      const sectionUrls = /* @__PURE__ */ new Set();
-      if (root instanceof Element && root.hasAttribute("data-roselt-section-source")) {
-        sectionUrls.add(root.getAttribute("data-roselt-section-source"));
-      }
-      if (root && typeof root.querySelectorAll === "function") {
-        for (const element of root.querySelectorAll("[data-roselt-section-source]")) {
-          sectionUrls.add(element.getAttribute("data-roselt-section-source"));
-        }
-      }
-      await Promise.all(
-        Array.from(sectionUrls).filter(Boolean).map((sectionUrl) => this.ensureSectionAssets(sectionUrl))
-      );
-    }
-  };
-
   // src/Roselt.js
   var DEFAULT_PAGE_ROOT_SELECTOR = "roselt[page][navigate]";
   function resolvePageRoot(pageRoot) {
@@ -2278,10 +2259,7 @@ ${source}
         routingMode = "query",
         queryParam = "page",
         basePath,
-        components = {},
         pagesDirectory = "pages",
-        sectionsDirectory = "sections",
-        componentsDirectory = "components",
         defaultPage
       } = options;
       this.routes = routes;
@@ -2292,20 +2270,15 @@ ${source}
         queryParam,
         basePath: basePath ?? deriveBasePath(),
         pagesDirectory,
-        sectionsDirectory,
-        componentsDirectory,
+        componentsDirectory: "components",
         defaultPage: resolvedDefaultPage
       };
       if (!this.pageRoot) {
         throw new Error("Roselt.js could not find a roselt[page][navigate] page root.");
       }
       this.loader = new PageLoader();
-      this.sections = new SectionLoader({
-        sectionsDirectory: this.options.sectionsDirectory
-      });
       this.components = globalComponentRegistry;
-      this.components.registerAll(components);
-      this.renderer = new RenderEngine(this, this.loader, this.sections, this.components);
+      this.renderer = new RenderEngine(this, this.loader, this.components);
       this.router = new NavigationRouter(this);
       this.started = false;
       this.handleWindowError = this.handleWindowError.bind(this);
@@ -2346,12 +2319,11 @@ ${source}
       if (this.started) {
         return Promise.resolve();
       }
-      return this.ensureEntryAssets().then(() => this.sections.resolveRootIncludes(document.body)).then(async () => {
+      return this.ensureEntryAssets().then(async () => {
         await this.components.ensureForRoot(
           document.body,
           (tagName) => this.resolveComponent(tagName)
         );
-        await this.sections.hydrateRoot(document.body);
         this.router.start();
         window.addEventListener("error", this.handleWindowError);
         window.addEventListener("unhandledrejection", this.handleUnhandledRejection);
@@ -2406,9 +2378,6 @@ ${source}
   Object.assign(globalThis.Roselt ?? {}, {
     Roselt: Roselt_default,
     start,
-    ComponentRegistry,
-    defineComponent,
-    globalComponentRegistry,
-    lazyComponent
+    defineComponent
   });
 })();

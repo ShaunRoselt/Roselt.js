@@ -1,1 +1,0 @@
-// Optional section script stub.

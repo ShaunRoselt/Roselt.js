@@ -6,7 +6,6 @@ import { reportRoseltRuntimeError } from "./runtime/dev-error-overlay.js";
 import { PageLoader } from "./runtime/page-loader.js";
 import { clearActiveRoseltApp, setActiveRoseltApp } from "./runtime/page-script.js";
 import { RenderEngine } from "./runtime/render-engine.js";
-import { SectionLoader } from "./runtime/section-loader.js";
 import { deriveBasePath, joinUrlPath } from "./utils/resolve-url.js";
 
 const DEFAULT_PAGE_ROOT_SELECTOR = "roselt[page][navigate]";
@@ -75,10 +74,7 @@ export class Roselt {
       routingMode = "query",
       queryParam = "page",
       basePath,
-      components = {},
       pagesDirectory = "pages",
-      sectionsDirectory = "sections",
-      componentsDirectory = "components",
       defaultPage,
     } = options;
 
@@ -92,8 +88,7 @@ export class Roselt {
       queryParam,
       basePath: basePath ?? deriveBasePath(),
       pagesDirectory,
-      sectionsDirectory,
-      componentsDirectory,
+      componentsDirectory: "components",
       defaultPage: resolvedDefaultPage,
     };
 
@@ -102,12 +97,8 @@ export class Roselt {
     }
 
     this.loader = new PageLoader();
-    this.sections = new SectionLoader({
-      sectionsDirectory: this.options.sectionsDirectory,
-    });
     this.components = globalComponentRegistry;
-    this.components.registerAll(components);
-    this.renderer = new RenderEngine(this, this.loader, this.sections, this.components);
+    this.renderer = new RenderEngine(this, this.loader, this.components);
     this.router = new NavigationRouter(this);
     this.started = false;
     this.handleWindowError = this.handleWindowError.bind(this);
@@ -163,12 +154,11 @@ export class Roselt {
       return Promise.resolve();
     }
 
-    return this.ensureEntryAssets().then(() => this.sections.resolveRootIncludes(document.body)).then(async () => {
+    return this.ensureEntryAssets().then(async () => {
       await this.components.ensureForRoot(
         document.body,
         (tagName) => this.resolveComponent(tagName),
       );
-      await this.sections.hydrateRoot(document.body);
 
       this.router.start();
       window.addEventListener("error", this.handleWindowError);

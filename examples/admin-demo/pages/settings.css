@@ -82,28 +82,28 @@
 	border-radius: 0.35rem;
 }
 
+.theme-option__preview--dark span:nth-child(1) {
+	background: #05070c;
+}
+
+.theme-option__preview--dark span:nth-child(2) {
+	background: #111827;
+}
+
+.theme-option__preview--dark span:nth-child(3) {
+	background: #f8fafc;
+}
+
 .theme-option__preview--light span:nth-child(1) {
 	background: #ffffff;
 }
 
 .theme-option__preview--light span:nth-child(2) {
-	background: #ece8e1;
+	background: #e2e8f0;
 }
 
 .theme-option__preview--light span:nth-child(3) {
 	background: #2563eb;
-}
-
-.theme-option__preview--dark span:nth-child(1) {
-	background: #000000;
-}
-
-.theme-option__preview--dark span:nth-child(2) {
-	background: #0b1220;
-}
-
-.theme-option__preview--dark span:nth-child(3) {
-	background: #60a5fa;
 }
 
 .theme-option__preview--blue span:nth-child(1) {

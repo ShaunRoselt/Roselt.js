@@ -1,2 +1,2 @@
-Roselt.Page.Title = "Sections | Roselt.js";
-Roselt.Page.Description = "Use Roselt.js sections for shared shell fragments, recursive includes, and persistent cross-page UI.";
+Roselt.Page.Title = "Shell Components | Roselt.js";
+Roselt.Page.Description = "Use shell components for shared headers, footers, sidebars, and other UI that should stay mounted across navigation.";

@@ -137,11 +137,11 @@ function renderCodeFrameMarkup(codeFrame) {
     <section class="roselt-runtime-error-codeframe">
       <h4>Source</h4>
       <pre>${codeFrame.lines
-        .map(
-          (line) =>
-            `<div class="roselt-runtime-error-codeframe-line${line.highlight ? " is-highlighted" : ""}"><span class="roselt-runtime-error-gutter">${line.lineNumber}</span><span class="roselt-runtime-error-code">${escapeHtml(line.text || " ")}</span></div>`,
-        )
-        .join("")}</pre>
+      .map(
+        (line) =>
+          `<div class="roselt-runtime-error-codeframe-line${line.highlight ? " is-highlighted" : ""}"><span class="roselt-runtime-error-gutter">${line.lineNumber}</span><span class="roselt-runtime-error-code">${escapeHtml(line.text || " ")}</span></div>`,
+      )
+      .join("")}</pre>
     </section>
   `;
 }
@@ -695,14 +695,18 @@ export function reportRoseltResourceError(details) {
 
 export function reportRoseltRuntimeError(error, details = {}) {
   const cause = error instanceof Error ? error : new Error(String(error || "Unknown runtime error"));
+  const runtimeDetails = cause?.roseltRuntimeDetails || {};
   const normalized = normalizeDetails({
     kind: "runtime",
     resourceType: "runtime error",
     title: `${readErrorName(cause)}: ${readErrorMessage({ message: details.message, cause })}`,
     message: details.description || "An uncaught runtime error happened while Roselt.js was running the current page.",
-    reference: details.reference || "",
-    requestedUrl: details.requestedUrl || details.filename || "",
-    source: details.source || window.location.href,
+    reference: details.reference || runtimeDetails.reference || "",
+    requestedUrl: details.requestedUrl || runtimeDetails.requestedUrl || details.filename || "",
+    source: details.source || runtimeDetails.source || window.location.href,
+    topFrame: details.topFrame || runtimeDetails.topFrame || null,
+    codeFrame: details.codeFrame || runtimeDetails.codeFrame || null,
+    stack: details.stack || runtimeDetails.stack,
     cause,
   });
   const key = createErrorKey(normalized);

@@ -1,9 +1,9 @@
 # Roselt.js
 
-Roselt.js is a vanilla JavaScript framework for building routed web apps with real HTML, persistent shell sections, and file-based organization.
+Roselt.js is a vanilla JavaScript framework for building routed web apps with real HTML, reusable components, and file-based organization.
 
 - **File-based pages:** Map routes directly to `pages/` files, with optional same-name JavaScript and CSS sidecars.
-- **Persistent shell:** Keep headers, sidebars, footers, and shared UI mounted with `roselt section="..."`.
+- **Shell components:** Keep headers, sidebars, footers, and shared UI mounted with regular components placed outside the routed page root.
 - **Platform-first runtime:** Use HTML, CSS, custom elements, and the browser Navigation API instead of a heavyweight client runtime.
 
 Learn more at [www.roseltjs.org](https://www.roseltjs.org/).
@@ -24,6 +24,8 @@ cd my-app
 npm install
 npm start
 ```
+
+Older guides may still reference `npm create roselt-js@latest my-app`. That legacy alias is still published for backward compatibility, but `npm create roselt@latest my-app` is the current recommended command.
 
 If you already created or cloned a fresh repository, you can scaffold directly into that repo root:
 
@@ -56,7 +58,7 @@ The documentation is divided into several sections:
 - [Project Structure](https://www.roseltjs.org/?page=docs/project-structure)
 - [Routing and Navigation](https://www.roseltjs.org/?page=docs/routing)
 - [Pages](https://www.roseltjs.org/?page=docs/pages)
-- [Sections](https://www.roseltjs.org/?page=docs/sections)
+- [Shell Components](https://www.roseltjs.org/?page=docs/sections)
 - [Components](https://www.roseltjs.org/?page=docs/components)
 - [Metadata and SEO](https://www.roseltjs.org/?page=docs/metadata-seo)
 - [API Reference](https://www.roseltjs.org/?page=docs/api-reference)
@@ -75,7 +77,13 @@ Here is the smallest Roselt.js app shape:
     <title>My Roselt App</title>
   </head>
   <body>
-    <roselt page="home" navigate></roselt>
+    <site-header></site-header>
+
+    <main>
+      <roselt page="home" navigate></roselt>
+    </main>
+
+    <site-footer></site-footer>
 
     <script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"></script>
     <script>
@@ -109,6 +117,22 @@ Then add the page it links to:
 
 For the default query router, a normal anchor such as `<a href="?page=about">About</a>` is enough to move between pages.
 
+Shared shell UI is just another component file:
+
+```js
+// components/site-header.js
+Roselt.defineComponent(function () {
+  this.shadow = false;
+  this.render = () => `
+    <header>
+      <a href="?page=home">My app</a>
+    </header>
+  `;
+});
+```
+
+Shadow DOM is the default for lightweight components. Set `this.shadow = false` in a function definition, or `shadow: false` in an object definition, when the component should render into light DOM.
+
 If you want to trigger navigation from JavaScript instead, Roselt also exposes:
 
 ```js
@@ -127,12 +151,9 @@ pages/
   home.js
   home.css
   docs/getting-started.html
-sections/
-  site-header.html
-  site-header.js
-  site-header.css
-  site-footer.html
 components/
+  site-header.js
+  site-footer.js
   ui-button.js
 ```
 
@@ -144,6 +165,7 @@ This repository includes working examples you can inspect directly:
 
 - `examples/starter-app/` is the official starter template used by `npm create roselt`
 - `packages/create-roselt/` contains the `npm create` entry point
+- `packages/create-roselt-js/` keeps the legacy `npm create roselt-js` alias working for existing guides and projects
 
 ## Contributing
 

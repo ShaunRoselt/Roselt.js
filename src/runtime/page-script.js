@@ -6,7 +6,6 @@ function createDefinition(url) {
     exports: {},
     meta: {},
     stylesheets: [],
-    components: {},
     load: null,
     promise: null,
   };
@@ -105,14 +104,6 @@ function ensurePageApi() {
         set Stylesheets(value) {
           withActiveDefinition((definition) => {
             definition.stylesheets = normalizeArray(value);
-          });
-        },
-        get Components() {
-          return activeDefinition?.components ?? {};
-        },
-        set Components(value) {
-          withActiveDefinition((definition) => {
-            definition.components = value || {};
           });
         },
         get Load() {
@@ -277,9 +268,6 @@ export function normalizePageScript(definition) {
       ...(definition?.meta || {}),
     },
     stylesheets: [...(definition?.stylesheets || [])],
-    components: {
-      ...(definition?.components || {}),
-    },
     load: definition?.load ?? null,
   };
 }

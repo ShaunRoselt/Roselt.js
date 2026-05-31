@@ -1,4 +1,4 @@
-import { loadClassicScript } from "../runtime/classic-script-loader.js";
+import { getActiveClassicScriptUrl, loadClassicScript } from "../runtime/classic-script-loader.js";
 import { reportRoseltResourceError } from "../runtime/dev-error-overlay.js";
 import { resolveBrowserLoadUrl, resolveUrl } from "../utils/resolve-url.js";
 
@@ -46,6 +46,30 @@ function createSourceLocation(url, source, match) {
   };
 }
 
+function createInvalidComponentRegistrationError(tagName, usageLocation, source) {
+  const error = new Error(
+    `Component ${tagName} must register itself by calling Roselt.defineComponent(definition) from its component file.`,
+  );
+
+  error.name = "ComponentRegistrationError";
+  error.roseltRuntimeDetails = {
+    source: usageLocation?.url || source || document.baseURI,
+    reference: tagName,
+    topFrame: usageLocation
+      ? {
+        functionName: tagName,
+        url: usageLocation.url,
+        line: usageLocation.line,
+        column: usageLocation.column,
+      }
+      : null,
+    codeFrame: usageLocation?.codeFrame || null,
+    stack: usageLocation ? "" : undefined,
+  };
+
+  return error;
+}
+
 function findComponentMatch(source, element, tagName) {
   const exactMarkup = element?.outerHTML;
 
@@ -87,12 +111,6 @@ function findComponentMatch(source, element, tagName) {
 }
 
 function resolveElementSourceUrl(element) {
-  const sectionHost = element?.closest?.("[data-roselt-section-source]");
-
-  if (sectionHost?.getAttribute) {
-    return sectionHost.getAttribute("data-roselt-section-source") || "";
-  }
-
   const pageHost = element?.closest?.("[data-roselt-page-source]");
 
   if (pageHost?.getAttribute) {
@@ -104,6 +122,329 @@ function resolveElementSourceUrl(element) {
 
 function isCustomElementConstructor(value) {
   return typeof value === "function" && value.prototype instanceof HTMLElement;
+}
+
+function isPlainObject(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function createLightweightComponentClassName(tagName) {
+  const parts = String(tagName)
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1));
+
+  return `${parts.join("") || "Roselt"}Component`;
+}
+
+function inferComponentTagNameFromFile() {
+  const scriptUrl = getActiveClassicScriptUrl();
+
+  if (!scriptUrl) {
+    throw new Error(
+      "Roselt.defineComponent(definition) must run while a component file is executing so Roselt can infer the component name from the filename.",
+    );
+  }
+
+  const url = new URL(scriptUrl, document.baseURI);
+  const fileName = decodeURIComponent(url.pathname.split("/").pop() || "");
+
+  if (!fileName.endsWith(".js")) {
+    throw new Error(
+      `Roselt.defineComponent(definition) could not infer a component name from ${scriptUrl}. Component files must end in .js.`,
+    );
+  }
+
+  const tagName = fileName.replace(/\.js$/, "");
+
+  if (!tagName.includes("-")) {
+    throw new Error(
+      `Roselt.defineComponent(definition) inferred ${tagName} from ${fileName}, but component filenames must include a hyphen.`,
+    );
+  }
+
+  return tagName;
+}
+
+const LIGHTWEIGHT_COMPONENT_STATE = Symbol("roseltLightweightComponentState");
+
+function getLightweightState(element) {
+  if (!element[LIGHTWEIGHT_COMPONENT_STATE]) {
+    Object.defineProperty(element, LIGHTWEIGHT_COMPONENT_STATE, {
+      value: {
+        bindings: [],
+        initialized: false,
+      },
+    });
+  }
+
+  return element[LIGHTWEIGHT_COMPONENT_STATE];
+}
+
+function getLightweightRenderRoot(element) {
+  return element.shadow === false ? element : element.shadowRoot;
+}
+
+function attachLightweightBinding(element, binding) {
+  const root = getLightweightRenderRoot(element);
+
+  if (!root || binding.listener) {
+    return;
+  }
+
+  binding.listener = (event) => {
+    if (!binding.selector) {
+      binding.handler.call(element, event, event.target, element);
+      return;
+    }
+
+    if (!(event.target instanceof Element)) {
+      return;
+    }
+
+    const match = event.target.closest(binding.selector);
+
+    if (!match || !root.contains(match)) {
+      return;
+    }
+
+    binding.handler.call(element, event, match, element);
+  };
+
+  root.addEventListener(binding.type, binding.listener, binding.options);
+}
+
+function renderLightweightComponent(element) {
+  const root = getLightweightRenderRoot(element);
+
+  if (!root) {
+    return null;
+  }
+
+  const output = typeof element.render === "function" ? element.render.call(element, element) : element.render;
+  root.innerHTML = output == null ? "" : String(output);
+  return root;
+}
+
+function bindLightweightValue(element, key, value) {
+  element[key] = typeof value === "function" ? value.bind(element) : value;
+}
+
+const LIGHTWEIGHT_RESERVED_KEYS = new Set([
+  "attributeChanged",
+  "autoRender",
+  "connected",
+  "disconnected",
+  "observedAttributes",
+  "render",
+  "setup",
+  "shadow",
+]);
+
+function ensureLightweightHelpers(element) {
+  const state = getLightweightState(element);
+
+  if (!Object.hasOwn(element, "on")) {
+    Object.defineProperty(element, "on", {
+      value(type, selector, handler, options) {
+        const binding =
+          typeof selector === "function"
+            ? { type, selector: null, handler: selector, options: handler }
+            : { type, selector, handler, options };
+
+        state.bindings.push(binding);
+        attachLightweightBinding(element, binding);
+        return binding;
+      },
+      configurable: true,
+    });
+  }
+
+  if (!Object.hasOwn(element, "emit")) {
+    Object.defineProperty(element, "emit", {
+      value(type, detail, options = {}) {
+        const event = new CustomEvent(type, {
+          detail,
+          bubbles: true,
+          composed: true,
+          ...options,
+        });
+
+        element.dispatchEvent(event);
+        return event;
+      },
+      configurable: true,
+    });
+  }
+
+  if (!Object.hasOwn(element, "requestRender")) {
+    Object.defineProperty(element, "requestRender", {
+      value() {
+        return renderLightweightComponent(element);
+      },
+      configurable: true,
+    });
+  }
+
+  if (!Object.hasOwn(element, "root")) {
+    Object.defineProperty(element, "root", {
+      get() {
+        return getLightweightRenderRoot(element);
+      },
+      configurable: true,
+    });
+  }
+}
+
+function applyLightweightDefinition(element, definition) {
+  if (typeof definition === "function") {
+    definition.call(element, element);
+    return;
+  }
+
+  if (!isPlainObject(definition)) {
+    return;
+  }
+
+  for (const [key, value] of Object.entries(definition)) {
+    if (!LIGHTWEIGHT_RESERVED_KEYS.has(key)) {
+      bindLightweightValue(element, key, value);
+    }
+  }
+
+  if (Object.hasOwn(definition, "shadow")) {
+    element.shadow = definition.shadow !== false;
+  }
+
+  if (Object.hasOwn(definition, "render")) {
+    element.render = definition.render;
+  }
+
+  if (Object.hasOwn(definition, "connected")) {
+    element.connected = definition.connected;
+  }
+
+  if (Object.hasOwn(definition, "disconnected")) {
+    element.disconnected = definition.disconnected;
+  }
+
+  if (Object.hasOwn(definition, "attributeChanged")) {
+    element.attributeChanged = definition.attributeChanged;
+  }
+
+  if (Object.hasOwn(definition, "autoRender")) {
+    element.autoRender = definition.autoRender !== false;
+  }
+
+  if (typeof definition.setup === "function") {
+    definition.setup.call(element, element);
+  }
+}
+
+function initializeLightweightComponent(element, definition) {
+  const state = getLightweightState(element);
+
+  if (state.initialized) {
+    return element;
+  }
+
+  ensureLightweightHelpers(element);
+  element.shadow = element.shadow !== false;
+  element.render = element.render || "";
+  element.connected = element.connected || null;
+  element.disconnected = element.disconnected || null;
+  element.attributeChanged = element.attributeChanged || null;
+  element.autoRender = element.autoRender !== false;
+
+  applyLightweightDefinition(element, definition);
+
+  if (element.shadow !== false && !element.shadowRoot) {
+    element.attachShadow({ mode: "open" });
+  }
+
+  for (const binding of state.bindings) {
+    attachLightweightBinding(element, binding);
+  }
+
+  state.initialized = true;
+  return element;
+}
+
+function createLightweightComponentClass(tagName, definition) {
+  const observedAttributes = Array.isArray(definition?.observedAttributes)
+    ? definition.observedAttributes.map((value) => String(value))
+    : [];
+
+  const LightweightComponent = class extends HTMLElement {
+    static observedAttributes = observedAttributes;
+
+    constructor() {
+      super();
+      getLightweightState(this);
+      ensureLightweightHelpers(this);
+    }
+
+    connectedCallback() {
+      const element = initializeLightweightComponent(this, definition);
+      renderLightweightComponent(element);
+
+      if (typeof element.connected === "function") {
+        element.connected.call(element, this);
+      }
+    }
+
+    disconnectedCallback() {
+      const element = initializeLightweightComponent(this, definition);
+
+      if (typeof element.disconnected === "function") {
+        element.disconnected.call(element, this);
+      }
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      const element = initializeLightweightComponent(this, definition);
+
+      if (typeof element.attributeChanged === "function") {
+        element.attributeChanged.call(element, name, oldValue, newValue, this);
+      }
+
+      if (oldValue !== newValue && element.autoRender !== false) {
+        renderLightweightComponent(element);
+      }
+    }
+  };
+
+  Object.defineProperty(LightweightComponent, "name", {
+    value: createLightweightComponentClassName(tagName),
+  });
+
+  return LightweightComponent;
+}
+
+function normalizeDefinedComponent(tagName, definition) {
+  if (typeof definition === "function" || isPlainObject(definition)) {
+    return createLightweightComponentClass(tagName, definition);
+  }
+
+  throw new Error(
+    `Roselt.defineComponent(${tagName}) only accepts a lightweight definition function or object.`,
+  );
+}
+
+function normalizeDefineComponentArguments(tagNameOrDefinition, maybeDefinition) {
+  if (typeof tagNameOrDefinition === "string") {
+    return {
+      tagName: tagNameOrDefinition,
+      definition: normalizeDefinedComponent(tagNameOrDefinition, maybeDefinition),
+    };
+  }
+
+  const tagName = inferComponentTagNameFromFile();
+
+  return {
+    tagName,
+    definition: normalizeDefinedComponent(tagName, tagNameOrDefinition),
+  };
 }
 
 export class ComponentRegistry {
@@ -232,11 +573,11 @@ export class ComponentRegistry {
           source: usageLocation?.url || resolveElementSourceUrl(context.element),
           topFrame: usageLocation
             ? {
-                functionName: tagName,
-                url: usageLocation.url,
-                line: usageLocation.line,
-                column: usageLocation.column,
-              }
+              functionName: tagName,
+              url: usageLocation.url,
+              line: usageLocation.line,
+              column: usageLocation.column,
+            }
             : null,
           codeFrame: usageLocation?.codeFrame || null,
           stack: usageLocation ? "" : undefined,
@@ -249,20 +590,15 @@ export class ComponentRegistry {
       if (!isCustomElementConstructor(constructor)) {
         constructor = customElements.get(tagName) ?? constructor;
       }
-    } else if (!isCustomElementConstructor(definition) && typeof definition === "function") {
-      const resolved = await definition();
-
-      if (typeof resolved === "string") {
-        this.definitions.set(tagName, resolved);
-        return this.resolveDefinition(tagName, fallbackResolver);
-      }
-
-      constructor = resolved?.default ?? resolved;
     }
 
     if (!isCustomElementConstructor(constructor)) {
-      throw new Error(
-        `Component ${tagName} must register itself with Roselt.defineComponent(...) or customElements.define(...).`,
+      const usageLocation = await this.resolveElementLocation(tagName, context.element);
+
+      throw createInvalidComponentRegistrationError(
+        tagName,
+        usageLocation,
+        resolveElementSourceUrl(context.element),
       );
     }
 
@@ -276,10 +612,12 @@ export class ComponentRegistry {
 
 export const globalComponentRegistry = new ComponentRegistry();
 
-export function defineComponent(tagName, constructor) {
-  globalComponentRegistry.register(tagName, constructor);
-}
+export function defineComponent(tagNameOrDefinition, maybeDefinition) {
+  const { tagName, definition } = normalizeDefineComponentArguments(
+    tagNameOrDefinition,
+    maybeDefinition,
+  );
 
-export function lazyComponent(tagName, loader) {
-  globalComponentRegistry.register(tagName, loader);
+  globalComponentRegistry.register(tagName, definition);
+  return definition;
 }

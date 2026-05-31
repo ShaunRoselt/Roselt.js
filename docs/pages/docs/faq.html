@@ -1,10 +1,11 @@
-<roselt section="docs-sidebar"></roselt>
+<docs-sidebar></docs-sidebar>
 <article class="page-shell doc-page">
   <header class="doc-page__header">
     <p class="eyebrow">FAQ</p>
     <h1>Common decisions and tradeoffs.</h1>
     <p class="doc-page__lead">
-      Roselt.js is small enough that most questions come down to hosting assumptions, directory layout, and how much framework behavior you actually want layered over the browser platform.
+      Roselt.js is small enough that most questions come down to hosting assumptions, directory layout, and how much
+      framework behavior you actually want layered over the browser platform.
     </p>
   </header>
 
@@ -13,27 +14,39 @@
     <div class="faq-list">
       <div class="callout">
         <strong>Does Roselt.js require a build step?</strong>
-        <p>No. The framework can start directly from the prebuilt global bundle. The build scripts in this repository exist to produce the published <code>dist/</code> outputs.</p>
+        <p>No. The framework can start directly from the prebuilt global bundle. The build scripts in this repository
+          exist to produce the published <code>dist/</code> outputs.</p>
       </div>
       <div class="callout">
         <strong>What does the CDN URL look like now?</strong>
-        <p>Use <code>https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js</code> for the browser global and call <code>Roselt.start()</code>. The minified browser-global build is <code>https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.min.js</code>.</p>
+        <p>Use <code>https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js</code> for the browser global
+          and call <code>Roselt.start()</code>. The minified browser-global build is
+          <code>https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.min.js</code>.</p>
       </div>
       <div class="callout">
         <strong>Why is query routing the default?</strong>
-        <p>Because it works on static hosts without rewrites. That makes Roselt.js a practical choice for GitHub Pages-backed documentation or product sites.</p>
+        <p>Because it works on static hosts without rewrites. That makes Roselt.js a practical choice for GitHub
+          Pages-backed documentation or product sites.</p>
       </div>
       <div class="callout">
         <strong>Can I skip the JavaScript file for a page?</strong>
-        <p>Yes. If a route only needs markup, omit the <code>.js</code> file entirely. Roselt.js treats missing page modules as optional.</p>
+        <p>Yes. If a route only needs markup, omit the <code>.js</code> file entirely. Roselt.js treats missing page
+          modules as optional.</p>
+      </div>
+      <div class="callout">
+        <strong>Do older <code>npm create roselt-js</code> guides still work?</strong>
+        <p>Yes. The legacy create package still exists for backward compatibility, but new documentation should point to
+          <code>npm create roselt@latest</code>.</p>
       </div>
       <div class="callout">
         <strong>Do I have to use custom elements?</strong>
-        <p>No. Components are optional. Plain HTML pages and reusable sections are enough for many Roselt.js sites.</p>
+        <p>No. Components are optional. Plain HTML pages plus a few shell components are enough for many Roselt.js
+          sites.</p>
       </div>
       <div class="callout">
         <strong>What browser target does Roselt.js assume?</strong>
-        <p>Latest browsers with Navigation API support. The repository builds ES2022 output and treats the browser Navigation API as the routing foundation.</p>
+        <p>Latest browsers with Navigation API support. The repository builds ES2022 output and treats the browser
+          Navigation API as the routing foundation.</p>
       </div>
     </div>
   </section>

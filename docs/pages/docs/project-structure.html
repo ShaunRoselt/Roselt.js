@@ -1,10 +1,10 @@
-<roselt section="docs-sidebar"></roselt>
+<docs-sidebar></docs-sidebar>
 <article class="page-shell doc-page">
   <header class="doc-page__header">
     <p class="eyebrow">Project structure</p>
     <h1>Roselt.js reads your directory layout as application structure.</h1>
     <p class="doc-page__lead">
-      The framework is intentionally opinionated here. Instead of maintaining a separate route registry for common cases, you usually let Roselt.js resolve requested pages, sections, and components from three default directories.
+      The framework is intentionally opinionated here. Instead of maintaining a separate route registry for common cases, you usually let Roselt.js resolve requested pages and components directly from the default folders.
     </p>
   </header>
 
@@ -15,12 +15,9 @@ pages/
   home.html
   home.js
   docs/getting-started.html
-sections/
-  site-header.html
-  site-header.js
-  site-header.css
-  site-footer.html
 components/
+  site-header.js
+  site-footer.js
   ui-button.js</code></pre>
   </section>
 
@@ -39,12 +36,8 @@ components/
           <td>Routeable HTML files, optional page modules, and optional same-name CSS files.</td>
         </tr>
         <tr>
-          <td><code>sections/</code></td>
-          <td>Portable HTML fragments that can be resolved anywhere with <code>roselt section="..."</code>, with optional same-name CSS and JS sidecars.</td>
-        </tr>
-        <tr>
           <td><code>components/</code></td>
-          <td>Custom element modules loaded lazily when their tag names appear in the rendered DOM.</td>
+          <td>Component files loaded when their tag names appear in the shell or the rendered page. This includes reusable controls and shell pieces like headers, footers, and sidebars.</td>
         </tr>
       </tbody>
     </table>
@@ -60,13 +53,13 @@ components/
   </section>
 
   <section class="doc-section">
-    <h2>Custom directories remain available</h2>
-    <p><code>Roselt.start()</code> accepts <code>pagesDirectory</code>, <code>sectionsDirectory</code>, and <code>componentsDirectory</code> when you want a different shape. The defaults are the fast path, not a hard limitation.</p>
-<pre class="code-block"><code>Roselt.start({
-  pagesDirectory: "app/pages",
-  sectionsDirectory: "app/sections",
-  componentsDirectory: "app/components"
-});</code></pre>
+    <h2>Shell components are just components</h2>
+    <p>If a component should stay mounted for the whole app, place the tag around the routed page root in <code>index.html</code>. If it only belongs to one route, place the tag inside that page file.</p>
+<pre class="code-block"><code>&lt;site-header&gt;&lt;/site-header&gt;
+&lt;main class="app-shell"&gt;
+  &lt;roselt page="home" navigate&gt;&lt;/roselt&gt;
+&lt;/main&gt;
+&lt;site-footer&gt;&lt;/site-footer&gt;</code></pre>
   </section>
 
   <nav class="doc-pagination" aria-label="Next steps">

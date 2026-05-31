@@ -1,33 +1,38 @@
-<roselt section="docs-sidebar"></roselt>
+<docs-sidebar></docs-sidebar>
 <article class="page-shell doc-page">
   <header class="doc-page__header">
     <p class="eyebrow">Installation</p>
     <h1>Choose between a local package workflow and a zero-config script include.</h1>
     <p class="doc-page__lead">
-      Roselt.js can be consumed either as a package you build into your own app or as the prebuilt global bundle. The right choice depends on how much control you want over your surrounding toolchain.
+      Roselt.js can be consumed either as a package you build into your own app or as the prebuilt global bundle. The
+      right choice depends on how much control you want over your surrounding toolchain.
     </p>
   </header>
 
   <section class="doc-section">
     <h2>Option 1: scaffold a new app</h2>
-<pre class="code-block"><code>npm create roselt@latest my-app
+    <pre class="code-block"><code>npm create roselt@latest my-app
 cd my-app
 npm install
 npm start</code></pre>
-    <p>This is the recommended starting point if you want the official starter shell, route structure, and development script without setting them up by hand.</p>
-  <p>For a freshly created repository, you can also run <code>npm create roselt@latest .</code> from the repo root and keep the app at the top level.</p>
+    <p>This is the recommended starting point if you want the official starter shell, route structure, and development
+      script without setting them up by hand.</p>
+    <p>The legacy alias <code>npm create roselt-js@latest my-app</code> still works, but the canonical package name is
+      now <code>create-roselt</code>.</p>
+    <p>For a freshly created repository, you can also run <code>npm create roselt@latest .</code> from the repo root and
+      keep the app at the top level.</p>
   </section>
 
   <section class="doc-section">
     <h2>Option 2: install from npm</h2>
-<pre class="code-block"><code>npm install roselt-js</code></pre>
+    <pre class="code-block"><code>npm install roselt-js</code></pre>
     <p>Use the package directly when Roselt.js is one part of an existing toolchain or repository.</p>
   </section>
 
   <section class="doc-section">
     <h2>Option 3: use the global bundle</h2>
     <p>The quickest no-build path is a script tag that exposes the global <code>Roselt</code> object directly.</p>
-<pre class="code-block"><code>&lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
+    <pre class="code-block"><code>&lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
 &lt;script&gt;
   Roselt.start();
 &lt;/script&gt;</code></pre>
@@ -35,8 +40,9 @@ npm start</code></pre>
 
   <section class="doc-section">
     <h2>Repository workflow</h2>
-    <p>If you are working inside this repository, install dependencies and refresh the bundles with the existing scripts:</p>
-<pre class="code-block"><code>npm install
+    <p>If you are working inside this repository, install dependencies and refresh the bundles with the existing
+      scripts:</p>
+    <pre class="code-block"><code>npm install
 npm run build
 npm run serve</code></pre>
   </section>
@@ -61,7 +67,8 @@ npm run serve</code></pre>
         </tr>
         <tr>
           <td><code>npm run serve</code></td>
-          <td>Starts the simple local server so you can preview <code>docs/</code> and other repo files without adding another dev dependency.</td>
+          <td>Starts the simple local server so you can preview <code>docs/</code> and other repo files without adding
+            another dev dependency.</td>
         </tr>
       </tbody>
     </table>
@@ -71,11 +78,13 @@ npm run serve</code></pre>
     <h2>When to keep the package unbundled</h2>
     <div class="callout">
       <strong>Latest-browser assumption</strong>
-      <p>Roselt.js is built for modern browsers and ships ES2022 output. If your project needs legacy support, that should be solved in your build pipeline rather than inside the framework itself.</p>
+      <p>Roselt.js is built for modern browsers and ships ES2022 output. If your project needs legacy support, that
+        should be solved in your build pipeline rather than inside the framework itself.</p>
     </div>
     <div class="callout">
       <strong>One browser bundle</strong>
-      <p>The browser-facing story is intentionally narrow: load <code>dist/roselt.js</code> or <code>dist/roselt.min.js</code>, then call <code>Roselt.start()</code>.</p>
+      <p>The browser-facing story is intentionally narrow: load <code>dist/roselt.js</code> or
+        <code>dist/roselt.min.js</code>, then call <code>Roselt.start()</code>.</p>
     </div>
   </section>
 

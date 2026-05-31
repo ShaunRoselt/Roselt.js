@@ -5,7 +5,7 @@ const THEME_LABELS = {
 };
 
 Roselt.Page.Title = "Settings";
-Roselt.Page.Description = "Admin demo theme settings";
+Roselt.Page.Description = "Workspace appearance settings";
 Roselt.Page.Load = function () {
 	const themeApi = window.AdminDemoTheme;
 

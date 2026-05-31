@@ -34,11 +34,9 @@
 pages/
   home.html
   home.js
-sections/
-  header.html
-  sidebar.html
-  footer.html
 components/
+  site-header.js
+  site-footer.js
   ui-button.js</code></pre>
       </section>
     </div>
@@ -46,10 +44,10 @@ components/
 
   <section class="home-showcase home-showcase--reverse">
     <div class="home-showcase__copy">
-      <p class="eyebrow">Persistent shell</p>
+      <p class="eyebrow">Shell components</p>
       <h2>Keep the frame mounted while routed content swaps cleanly.</h2>
       <p>
-        Shared sections live in the shell, so the header, sidebar, and footer remain stable while navigation updates only the routed page content.
+        Shared components live in the shell, so the header, sidebar, and footer remain stable while navigation updates only the routed page content.
       </p>
       <p>
         That makes Roselt.js a good fit for full product applications, internal tools, documentation portals, and teams that want direct HTML authoring without giving up app structure.
@@ -62,10 +60,11 @@ components/
           <span class="panel__label">Bootstrap</span>
           <span class="panel__meta">index.html</span>
         </div>
-<pre><code>&lt;roselt section="header"&gt;&lt;/roselt&gt;
-&lt;roselt section="sidebar"&gt;&lt;/roselt&gt;
-&lt;roselt page="home"&gt;&lt;/roselt&gt;
-&lt;roselt section="footer"&gt;&lt;/roselt&gt;
+<pre><code>&lt;site-header&gt;&lt;/site-header&gt;
+&lt;main class="app-shell"&gt;
+  &lt;roselt page="home" navigate&gt;&lt;/roselt&gt;
+&lt;/main&gt;
+&lt;site-footer&gt;&lt;/site-footer&gt;
 
 &lt;script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@main/dist/roselt.js"&gt;&lt;/script&gt;
 &lt;script&gt;
@@ -98,8 +97,8 @@ components/
           <span>root entry page required to start a routed app</span>
         </article>
         <article class="home-signal-card">
-          <strong>3</strong>
-          <span>core directories to remember: pages, sections, and components</span>
+          <strong>2</strong>
+          <span>core directories to remember: pages and components</span>
         </article>
         <article class="home-signal-card">
           <strong>SPA</strong>
@@ -216,7 +215,7 @@ components/
       </article>
       <article class="doc-card">
         <h3>Learn the core primitives</h3>
-        <p>Move from routing into page lifecycle, sections, components, metadata, and the page authoring surface.</p>
+        <p>Move from routing into page lifecycle, shell components, reusable components, metadata, and the page authoring surface.</p>
         <div class="button-row">
           <a class="button-secondary" href="?page=docs/pages">Read the page guide</a>
         </div>

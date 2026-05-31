@@ -18,15 +18,6 @@ function dedupeStylesheets(entries) {
   });
 }
 
-function resolveDefinitions(definitions = {}, baseUrl = document.baseURI) {
-  return Object.fromEntries(
-    Object.entries(definitions).map(([tagName, definition]) => [
-      tagName,
-      typeof definition === "string" ? resolveUrl(definition, baseUrl) : definition,
-    ]),
-  );
-}
-
 function createSiblingStylesheetUrl(htmlUrl) {
   const url = new URL(htmlUrl);
 
@@ -42,11 +33,11 @@ function normalizeInitialStylesheets(route, pageModule, pageHtmlUrl, pageModuleU
   return dedupeStylesheets([
     ...(!hasInlineStyles
       ? [
-          {
-            href: createSiblingStylesheetUrl(pageHtmlUrl),
-            optional: true,
-          },
-        ]
+        {
+          href: createSiblingStylesheetUrl(pageHtmlUrl),
+          optional: true,
+        },
+      ]
       : []),
     ...(route.stylesheets || []).map((href) => ({
       href: resolveUrl(href, document.baseURI),
@@ -192,10 +183,9 @@ function isNotFoundRoute(route) {
 }
 
 export class RenderEngine {
-  constructor(app, loader, sections, components) {
+  constructor(app, loader, components) {
     this.app = app;
     this.loader = loader;
-    this.sections = sections;
     this.components = components;
     this.pageCleanup = null;
     this.activeStyleElements = [];
@@ -222,8 +212,7 @@ export class RenderEngine {
   async renderPage(routeMatch, currentUrl) {
     const page = await this.loader.load(routeMatch.route);
     const pageUsesInlineStyles = extractInlineStyles(page.html).inlineStyles.length > 0;
-    const resolvedHtml = await this.sections.resolveIncludes(page.html, page.htmlUrl);
-    const extractedPage = extractInlineStyles(resolvedHtml);
+    const extractedPage = extractInlineStyles(page.html);
     const cleanupManager = createPageCleanupManager();
     const pageContext = createPageContext(this.app, routeMatch, currentUrl, cleanupManager);
     const initialStylesheets = await Promise.all(
@@ -244,13 +233,10 @@ export class RenderEngine {
     this.app.pageRoot.setAttribute("data-roselt-page-source", page.htmlUrl);
     this.app.pageRoot.innerHTML = extractedPage.html;
 
-    this.components.registerAll(resolveDefinitions(routeMatch.route.components, document.baseURI));
-    this.components.registerAll(resolveDefinitions(page.module.components, page.moduleUrl));
     await this.components.ensureForRoot(
       this.app.pageRoot,
       (tagName) => this.app.resolveComponent(tagName),
     );
-    await this.sections.hydrateRoot(this.app.pageRoot);
 
     setActivePageContext(pageContext);
 

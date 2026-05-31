@@ -1,31 +1,14 @@
-Roselt.defineComponent("custom-button", class CustomButton extends HTMLElement {
-  static observedAttributes = ["href", "target", "variant"];
-
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-  }
-
-  connectedCallback() {
-    this.render();
-  }
-
-  attributeChangedCallback() {
-    this.render();
-  }
+Roselt.defineComponent({
+  observedAttributes: ["href", "target", "variant"],
 
   render() {
-    if (!this.shadowRoot) {
-      return;
-    }
-
     const href = this.getAttribute("href") || "#";
     const label = this.innerHTML.trim() || "Button";
     const target = this.getAttribute("target");
     const variant = this.getAttribute("variant") === "secondary" ? "secondary" : "primary";
     const targetAttributes = target ? ` target="${escapeAttribute(target)}" rel="noreferrer"` : "";
 
-    this.shadowRoot.innerHTML = `
+    return `
       <style>
         :host {
           display: inline-flex;

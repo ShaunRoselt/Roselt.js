@@ -2,6 +2,7 @@ import { resolveBrowserLoadUrl } from "../utils/resolve-url.js";
 
 const sourceCache = new Map();
 const executionCache = new Map();
+const executionUrlStack = [];
 
 function isMissingScriptError(error) {
   const message = String(error);
@@ -22,16 +23,16 @@ export async function readClassicScriptSource(url, { optional = false } = {}) {
     sourceCache.set(
       url,
       fetch(resolveBrowserLoadUrl(url)).then(async (response) => {
-            if (!response.ok) {
-              if (optional) {
-                return null;
-              }
+        if (!response.ok) {
+          if (optional) {
+            return null;
+          }
 
-              throw new Error(`Failed to load script: ${url}`);
-            }
+          throw new Error(`Failed to load script: ${url}`);
+        }
 
-            return response.text();
-          })
+        return response.text();
+      })
         .catch((error) => {
           if (optional && isMissingScriptError(error)) {
             return null;
@@ -48,8 +49,19 @@ export async function readClassicScriptSource(url, { optional = false } = {}) {
 export function executeClassicScript(source, url) {
   const script = document.createElement("script");
   script.textContent = `(function () {\n${source}\n}).call(globalThis);\n//# sourceURL=${url}`;
-  document.head.append(script);
-  script.remove();
+
+  executionUrlStack.push(url);
+
+  try {
+    document.head.append(script);
+  } finally {
+    script.remove();
+    executionUrlStack.pop();
+  }
+}
+
+export function getActiveClassicScriptUrl() {
+  return executionUrlStack[executionUrlStack.length - 1] || "";
 }
 
 export async function loadClassicScript(url, { optional = false } = {}) {

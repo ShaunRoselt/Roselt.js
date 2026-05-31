@@ -27,7 +27,7 @@
 		</script>
 
 		<div class="site-shell">
-			<roselt section="site-header"></roselt>
+			<site-header></site-header>
 
 			<div class="site-main" id="main-content">
 				<div class="site-page-column">
@@ -35,13 +35,12 @@
 				</div>
 			</div>
 
-			<roselt section="site-footer"></roselt>
+			<site-footer></site-footer>
 		</div>
 
 		<script src="index.js"></script>
 		 
-		<!-- <script src="../dist/roselt.js"></script> -->
-		<script src="https://cdn.jsdelivr.net/gh/ShaunRoselt/Roselt.js@latest/dist/roselt.js"></script>
+		<script src="../dist/roselt.js"></script>
 		<script>
 			Roselt.start().then(function(app) {
 				window.initializeSiteChrome?.(app);

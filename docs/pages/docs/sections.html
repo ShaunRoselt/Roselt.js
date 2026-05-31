@@ -1,59 +1,57 @@
-<roselt section="docs-sidebar"></roselt>
+<docs-sidebar></docs-sidebar>
 <article class="page-shell doc-page">
   <header class="doc-page__header">
-    <p class="eyebrow">Sections</p>
-    <h1>Sections are reusable HTML fragments that can stay mounted across route changes.</h1>
+    <p class="eyebrow">Shell components</p>
+    <h1>Shell components are regular components placed outside the routed page root.</h1>
     <p class="doc-page__lead">
-      Use sections for shared shell fragments such as headers, footers, sidebars, legal notices, or cross-page utility UI. Roselt.js resolves them recursively and caches them after startup.
+      Use shell components for shared UI such as headers, footers, sidebars, legal notices, or global navigation. They use the same component system as everything else in Roselt.js.
     </p>
   </header>
 
   <section class="doc-section">
-    <h2>Load a section with shorthand</h2>
-<pre class="code-block"><code>&lt;roselt section="site-header"&gt;&lt;/roselt&gt;</code></pre>
-    <p>Roselt.js resolves shorthand names like <code>site-header</code> to <code>sections/site-header.html</code> by default.</p>
+    <h2>Place them around the routed page</h2>
+<pre class="code-block"><code>&lt;site-header&gt;&lt;/site-header&gt;
+&lt;main class="app-shell"&gt;
+  &lt;roselt page="home" navigate&gt;&lt;/roselt&gt;
+&lt;/main&gt;
+&lt;site-footer&gt;&lt;/site-footer&gt;</code></pre>
+    <p>Roselt.js sees <code>&lt;site-header&gt;</code>, loads <code>components/site-header.js</code>, and leaves that element mounted while the page root navigates between routes.</p>
   </section>
 
   <section class="doc-section">
-    <h2>Optional section sidecars</h2>
-    <p>Sections can now ship same-name sidecar files, similar to pages. When <code>sections/site-header.html</code> is used, Roselt.js also tries <code>sections/site-header.css</code> and <code>sections/site-header.js</code> automatically.</p>
-<pre class="code-block"><code>sections/
-  site-header.html
-  site-header.css
-  site-header.js</code></pre>
-    <p>Use the CSS file for shared section styling and the JS file for section-level browser behavior such as search overlays, menus, or shell controls.</p>
+    <h2>Use light DOM when the shell should share global styles</h2>
+    <p>Most shell components want access to the main stylesheet, so it is common to set <code>this.shadow = false</code> and render normal light DOM markup.</p>
+<pre class="code-block"><code>Roselt.defineComponent(function () {
+  this.shadow = false;
+
+  this.render = () =&gt; `
+    &lt;header class="site-header"&gt;
+      &lt;a href="?page=home"&gt;My app&lt;/a&gt;
+    &lt;/header&gt;
+  `;
+});</code></pre>
   </section>
 
   <section class="doc-section">
-    <h2>Resolve sections recursively</h2>
-    <p>Section HTML can include other sections. Roselt.js processes the fragment as a template and resolves nested <code>roselt section</code> elements before inserting the final markup.</p>
-<pre class="code-block"><code>&lt;!-- sections/site-header.html --&gt;
-&lt;header&gt;
-  &lt;roselt section="brand-lockup"&gt;&lt;/roselt&gt;
-  &lt;nav&gt;...&lt;/nav&gt;
-&lt;/header&gt;</code></pre>
-  </section>
-
-  <section class="doc-section">
-    <h2>Where sections work best</h2>
+    <h2>What belongs in the shell</h2>
     <div class="doc-card-grid">
       <article class="doc-card">
-        <h3>Persistent shell UI</h3>
-        <p>Wrap your page root with shared header and footer sections in <code>index.html</code> so they resolve once and remain mounted during navigation.</p>
+        <h3>Persistent layout chrome</h3>
+        <p>Use shell components for headers, footers, sidebars, toolbars, and any other UI that should not remount on each route.</p>
       </article>
       <article class="doc-card">
-        <h3>Portable content blocks</h3>
-        <p>Use sections as reusable content fragments for banners, shared calls to action, or repeated editorial modules.</p>
+        <h3>Global controls</h3>
+        <p>Menus, search overlays, theme toggles, and account menus often fit naturally in shell components because they live above the routed page.</p>
       </article>
       <article class="doc-card">
-        <h3>App-level composition</h3>
-        <p>Because sections resolve before routed content renders, they are a good place for shared layout scaffolding that should not reinitialize on each route.</p>
+        <h3>Shared composition</h3>
+        <p>Because shell components use the same component API, you can move markup between shell and page contexts without learning a second system.</p>
       </article>
     </div>
   </section>
 
   <section class="doc-section">
-    <h2>Path resolution rules</h2>
+    <h2>Resolution rules</h2>
     <table>
       <thead>
         <tr>
@@ -63,16 +61,16 @@
       </thead>
       <tbody>
         <tr>
-          <td><code>site-header</code></td>
-          <td>Resolved relative to the configured <code>sectionsDirectory</code> as <code>sections/site-header.html</code>, with optional <code>sections/site-header.css</code> and <code>sections/site-header.js</code> sidecars loaded automatically.</td>
+          <td><code>&lt;site-header&gt;</code></td>
+          <td>Resolved to <code>components/site-header.js</code>.</td>
         </tr>
         <tr>
-          <td><code>shared/promo.html</code></td>
-          <td>Treated as an explicit relative path and resolved against the including file.</td>
+          <td><code>&lt;admin-sidebar&gt;</code></td>
+          <td>Resolved to <code>components/admin-sidebar.js</code>.</td>
         </tr>
         <tr>
-          <td><code>https://...</code></td>
-          <td>Treated as a full URL reference.</td>
+          <td>Hyphen requirement</td>
+          <td>Component filenames and tag names must include a hyphen because they use the browser custom element model.</td>
         </tr>
       </tbody>
     </table>
